@@ -1,0 +1,45 @@
+server {
+    listen ${GATEWAY_PORT};
+    server_name ${DOMAIN_NAME};
+
+    # Resolve Docker service DNS at runtime so gateway can start even if a backend is down.
+    resolver 127.0.0.11 ipv6=off valid=30s;
+
+    # Tối ưu hóa log cho Docker
+    access_log /dev/stdout;
+    error_log /dev/stderr;
+
+    # Cấu hình Proxy Header chung
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Điều hướng Auth Service (FastAPI)
+    # Client gọi: /api/v1/auth/register → auth-service nhận: /auth/register
+    location /api/v1/auth/ {
+        set $auth_upstream http://${AUTH_SERVICE_HOST}:${AUTH_SERVICE_PORT};
+        rewrite ^/api/v1/auth/(.*)$ /auth/$1 break;
+        proxy_pass $auth_upstream;
+    }
+
+    # Điều hướng Product Service (FastAPI)
+    # Client gọi: /api/v1/products/... → product-service nhận: /products/...
+    location /api/v1/products/ {
+        set $product_upstream http://${PRODUCT_SERVICE_HOST}:${PRODUCT_SERVICE_PORT};
+        rewrite ^/api/v1/products/(.*)$ /products/$1 break;
+        proxy_pass $product_upstream;
+    }
+
+    # Điều hướng Kafka UI (Công cụ quản lý)
+    location /kafka-ui/ {
+        set $kafka_ui_upstream http://${KAFKA_UI_HOST}:${KAFKA_UI_PORT};
+        rewrite ^/kafka-ui/(.*)$ /$1 break;
+        proxy_pass $kafka_ui_upstream;
+    }
+
+    # Trang kiểm tra trạng thái Gateway
+    location /health {
+        return 200 'Gateway is up and running';
+    }
+}

@@ -1,0 +1,10 @@
+FROM nginx:1.25-alpine
+
+# Xóa cấu hình mặc định
+RUN rm /etc/nginx/conf.d/default.conf
+
+# Copy template vào đúng thư mục để Nginx tự động xử lý biến môi trường
+COPY ./templastes/default.conf.template /etc/nginx/templates/default.conf.template
+
+# Cổng này sẽ được mapping trong docker-compose
+EXPOSE 80

@@ -93,3 +93,25 @@ CREATE TABLE payments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
 );
+
+CREATE TABLE refresh_tokens (
+    token_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    token VARCHAR(500) NOT NULL UNIQUE,
+    is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+ALTER TABLE books DROP CONSTRAINT books_category_id_fkey;
+
+ALTER TABLE books
+ALTER COLUMN category_id DROP NOT NULL;
+
+ALTER TABLE books
+ADD CONSTRAINT books_category_id_fkey
+FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE SET NULL;
+
+ALTER TABLE payments
+ADD CONSTRAINT uq_payments_order_id UNIQUE (order_id);

@@ -44,6 +44,21 @@ class BookUpdate(BaseModel):
     image_url: str | None = None
 
 
+class AdminBookUpdate(BaseModel):
+    category_id: int | None = None
+    category_name: str | None = Field(default=None, min_length=1, max_length=100)
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    author: str | None = Field(default=None, min_length=1, max_length=150)
+    description: str | None = None
+    price: Decimal | None = Field(default=None, ge=0)
+    stock_quantity: int | None = Field(default=None, ge=0)
+    image_url: str | None = None
+    seller_id: int | None = Field(default=None, ge=1)
+    seller_username: str | None = Field(default=None, min_length=1, max_length=100)
+    is_active: bool | None = None
+    is_hidden: bool | None = None
+
+
 class BookResponse(BaseModel):
     book_id: int
     seller_id: int
@@ -55,6 +70,8 @@ class BookResponse(BaseModel):
     price: Decimal
     stock_quantity: int
     image_url: str | None = None
+    is_active: bool
+    is_hidden: bool
     created_at: datetime | None = None
 
     class Config:

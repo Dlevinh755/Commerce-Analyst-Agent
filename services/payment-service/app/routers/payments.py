@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
@@ -17,6 +19,10 @@ from ..common.auth_jwt import require_roles
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
+def _is_simulation_enabled() -> bool:
+    return os.getenv("PAYMENT_ALLOW_SIMULATE", "false").strip().lower() == "true"
+
+
 def serialize_payment(payment: Payment):
     return {
         "payment_id": payment.payment_id,
@@ -32,7 +38,7 @@ def serialize_payment(payment: Payment):
 
 def apply_order_status_from_payment(order: Order, payment_status: PaymentStatus):
     if payment_status == PaymentStatus.completed:
-        if order.status == OrderStatus.pending:
+        if order.status in [OrderStatus.pending]:
             order.status = OrderStatus.processing
     elif payment_status == PaymentStatus.refunded:
         if order.status in [OrderStatus.pending, OrderStatus.processing]:
@@ -46,9 +52,10 @@ def apply_order_status_from_payment(order: Order, payment_status: PaymentStatus)
 def create_payment(
     data: CreatePaymentRequest,
     db: Session = Depends(get_db),
-    payload: dict = Depends(require_roles("buyer")),
+    payload: dict = Depends(require_roles("buyer", "admin")),
 ):
-    buyer_id = int(payload["sub"])
+    requester_id = int(payload["sub"])
+    requester_role = payload["role"]
 
     order = (
         db.query(Order)
@@ -59,7 +66,7 @@ def create_payment(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if order.buyer_id != buyer_id:
+    if requester_role != "admin" and order.buyer_id != requester_id:
         raise HTTPException(status_code=403, detail="You can only pay for your own order")
 
     if order.status == OrderStatus.cancelled:
@@ -68,14 +75,45 @@ def create_payment(
     if order.payment:
         raise HTTPException(status_code=400, detail="Payment already exists for this order")
 
+    payment_method = data.payment_method.strip().upper()
+    initial_status = data.payment_status or PaymentStatus.pending
+
+    if requester_role != "admin":
+        if payment_method != "COD":
+            raise HTTPException(
+                status_code=403,
+                detail="Only COD payment creation is allowed for buyers",
+            )
+        if data.payment_status is not None or data.transaction_code is not None:
+            raise HTTPException(
+                status_code=403,
+                detail="Buyers cannot set payment status or transaction code directly",
+            )
+        initial_status = PaymentStatus.pending
+
+    if payment_method == "VNPAY":
+        if initial_status != PaymentStatus.completed:
+            raise HTTPException(
+                status_code=400,
+                detail="VNPay payment can only be created after successful payment confirmation",
+            )
+        if not (data.transaction_code or "").strip():
+            raise HTTPException(status_code=400, detail="VNPay transaction code is required")
+    elif initial_status != PaymentStatus.pending:
+        raise HTTPException(
+            status_code=400,
+            detail="Only VNPay can initialize a completed payment",
+        )
+
     payment = Payment(
         order_id=order.order_id,
-        payment_method=data.payment_method,
-        payment_status=PaymentStatus.pending,
+        payment_method=payment_method,
+        payment_status=initial_status,
         amount=order.total_amount,
-        transaction_code=None,
+        transaction_code=(data.transaction_code or None),
     )
     db.add(payment)
+    apply_order_status_from_payment(order, initial_status)
     db.commit()
     db.refresh(payment)
 
@@ -251,10 +289,10 @@ def refund_payment(
 def simulate_payment_success(
     payment_id: int,
     db: Session = Depends(get_db),
-    payload: dict = Depends(require_roles("buyer", "admin")),
+    payload: dict = Depends(require_roles("admin")),
 ):
-    requester_id = int(payload["sub"])
-    requester_role = payload["role"]
+    if not _is_simulation_enabled():
+        raise HTTPException(status_code=404, detail="Endpoint not found")
 
     payment = (
         db.query(Payment)
@@ -264,9 +302,6 @@ def simulate_payment_success(
     )
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
-
-    if requester_role != "admin" and payment.order.buyer_id != requester_id:
-        raise HTTPException(status_code=403, detail="You can only simulate your own payment")
 
     if payment.payment_status != PaymentStatus.pending:
         raise HTTPException(status_code=400, detail="Only pending payment can be simulated")
@@ -293,10 +328,10 @@ def simulate_payment_success(
 def simulate_payment_failed(
     payment_id: int,
     db: Session = Depends(get_db),
-    payload: dict = Depends(require_roles("buyer", "admin")),
+    payload: dict = Depends(require_roles("admin")),
 ):
-    requester_id = int(payload["sub"])
-    requester_role = payload["role"]
+    if not _is_simulation_enabled():
+        raise HTTPException(status_code=404, detail="Endpoint not found")
 
     payment = (
         db.query(Payment)
@@ -306,9 +341,6 @@ def simulate_payment_failed(
     )
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
-
-    if requester_role != "admin" and payment.order.buyer_id != requester_id:
-        raise HTTPException(status_code=403, detail="You can only simulate your own payment")
 
     if payment.payment_status != PaymentStatus.pending:
         raise HTTPException(status_code=400, detail="Only pending payment can be simulated")

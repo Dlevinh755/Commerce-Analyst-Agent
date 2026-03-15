@@ -36,6 +36,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
+    if not user.is_active or user.is_hidden:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account is inactive",
+        )
     return user
 
 

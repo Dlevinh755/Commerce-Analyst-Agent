@@ -4,7 +4,7 @@ import SearchBar from '../../components/common/SearchBar';
 import BookGrid from '../../components/common/BookGrid';
 import Toast from '../../components/common/Toast';
 import { bookService } from '../../services/bookService';
-import { getFallbackBooks, normalizeBook } from '../../utils/bookMapper';
+import { normalizeBook } from '../../utils/bookMapper';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -18,9 +18,9 @@ export default function HomePage() {
         const { data } = await bookService.list({ limit: 3 });
         const raw = Array.isArray(data) ? data : data?.items || [];
         const normalized = raw.map(normalizeBook).filter((book) => book.id !== undefined);
-        setFeatured(normalized.slice(0, 3).length ? normalized.slice(0, 3) : getFallbackBooks().slice(0, 3));
+        setFeatured(normalized.slice(0, 3));
       } catch {
-        setFeatured(getFallbackBooks().slice(0, 3));
+        setFeatured([]);
       }
     }
 
@@ -68,7 +68,11 @@ export default function HomePage() {
             View all
           </Link>
         </div>
-        <BookGrid books={featured} onUnauthorized={setToast} onAddedToCart={setToast} />
+        {featured.length === 0 ? (
+          <div className="card text-slate-600">No featured books available.</div>
+        ) : (
+          <BookGrid books={featured} onUnauthorized={setToast} onAddedToCart={setToast} />
+        )}
       </div>
 
       <Toast message={toast} onClose={() => setToast('')} />

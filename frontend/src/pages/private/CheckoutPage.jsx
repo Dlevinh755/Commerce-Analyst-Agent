@@ -7,6 +7,7 @@ import { paymentService } from '../../services/paymentService';
 import { vnpayService } from '../../services/vnpayService';
 
 const CHECKOUT_LOG_PREFIX = '[CheckoutPage]';
+const PENDING_VNPAY_CHECKOUT_KEY = 'pending-vnpay-checkout';
 const devLog = (...args) => {
   if (import.meta.env.DEV) {
     console.debug(CHECKOUT_LOG_PREFIX, ...args);
@@ -63,6 +64,37 @@ export default function CheckoutPage() {
     }
 
     try {
+      if (paymentMethod === 'VNPAY') {
+        const checkoutRef = `VNPAY-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        sessionStorage.setItem(
+          PENDING_VNPAY_CHECKOUT_KEY,
+          JSON.stringify({
+            checkoutRef,
+            shippingAddress: shippingAddress.trim(),
+            notes: notes.trim(),
+            requestedAt: new Date().toISOString(),
+          })
+        );
+
+        const { data } = await vnpayService.createPaymentUrl({
+          order_id: checkoutRef,
+          amount: Math.max(1, Math.round(totalAmount * 25000)),
+          order_desc: `Thanh toan don hang ${checkoutRef}`,
+          return_url: `${window.location.origin}/checkout/vnpay-return`,
+          language: 'vn',
+        });
+
+        const paymentUrl = data?.payment_url;
+        if (!paymentUrl) {
+          sessionStorage.removeItem(PENDING_VNPAY_CHECKOUT_KEY);
+          throw new Error('Could not create VNPay payment URL.');
+        }
+
+        devLog('submit:vnpay-redirect', { checkoutRef, hasPaymentUrl: Boolean(paymentUrl) });
+        window.location.href = paymentUrl;
+        return;
+      }
+
       const order = await createOrderFromCart({
         user,
         cartItems: items,
@@ -82,30 +114,9 @@ export default function CheckoutPage() {
 
       await paymentService.create({
         order_id: numericOrderId,
-        payment_method: paymentMethod,
+        payment_method: 'COD',
       });
       devLog('submit:payment-created', { orderId: numericOrderId, paymentMethod });
-
-      if (paymentMethod === 'VNPAY') {
-        const returnUrl = `${window.location.origin}/orders/${orderId}`;
-        const { data } = await vnpayService.createPaymentUrl({
-          order_id: String(orderId),
-          amount: Math.max(1, Math.round(total * 25000)),
-          order_desc: `Thanh toan don hang #${orderId}`,
-          return_url: returnUrl,
-          language: 'vn',
-        });
-
-        const paymentUrl = data?.payment_url;
-        if (!paymentUrl) {
-          throw new Error('Could not create VNPay payment URL.');
-        }
-
-        devLog('submit:vnpay-redirect', { orderId, hasPaymentUrl: Boolean(paymentUrl) });
-        await clearCart();
-        window.location.href = paymentUrl;
-        return;
-      }
 
       devLog('submit:cod-complete', { orderId });
       await clearCart();

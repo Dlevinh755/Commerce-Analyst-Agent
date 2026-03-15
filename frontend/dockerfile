@@ -1,21 +1,12 @@
-# Sử dụng Node.js bản stable
 FROM node:20-alpine
 
-# Thiết lập thư mục làm việc
 WORKDIR /app
 
-# Copy các file quản lý thư viện trước để tận dụng cache
-COPY package.json package-lock.json ./
-
-# Cài đặt thư viện
+COPY package*.json ./
 RUN npm install
 
-# Copy toàn bộ mã nguồn vào container
 COPY . .
 
-# Vite mặc định chạy ở port 5173
 EXPOSE 5173
 
-# Lệnh khởi chạy cho môi trường Dev
-# --host để Vite chấp nhận kết nối từ bên ngoài container
-CMD ["npm", "run", "dev", "--", "--host"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

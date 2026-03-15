@@ -6,7 +6,7 @@ import BookGrid from '../../components/common/BookGrid';
 import Pagination from '../../components/common/Pagination';
 import Toast from '../../components/common/Toast';
 import { bookService } from '../../services/bookService';
-import { getFallbackBooks, normalizeBook } from '../../utils/bookMapper';
+import { normalizeBook } from '../../utils/bookMapper';
 
 const ITEMS_PER_PAGE = 6;
 
@@ -33,10 +33,10 @@ export default function BookListPage() {
         const { data } = await bookService.list();
         const raw = Array.isArray(data) ? data : data?.items || [];
         const normalized = raw.map(normalizeBook).filter((book) => book.id !== undefined);
-        setBooks(normalized.length ? normalized : getFallbackBooks());
+        setBooks(normalized);
       } catch (err) {
-        setError('Could not load books from API. Showing fallback data.');
-        setBooks(getFallbackBooks());
+        setError('Could not load books from API.');
+        setBooks([]);
       } finally {
         setLoading(false);
       }
@@ -128,8 +128,14 @@ export default function BookListPage() {
             <div className="card text-slate-600">Loading books...</div>
           ) : (
             <>
-              <BookGrid books={pagedBooks} onUnauthorized={setToast} onAddedToCart={setToast} />
-              <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+              {filteredAndSortedBooks.length === 0 ? (
+                <div className="card text-slate-600">No books available.</div>
+              ) : (
+                <>
+                  <BookGrid books={pagedBooks} onUnauthorized={setToast} onAddedToCart={setToast} />
+                  <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+                </>
+              )}
             </>
           )}
         </div>

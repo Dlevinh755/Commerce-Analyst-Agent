@@ -6,10 +6,12 @@ from sqlalchemy import (
     Text,
     DateTime,
     Numeric,
+    Boolean,
     ForeignKey,
     CheckConstraint,
     Enum,
     func,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from .db import Base
@@ -21,6 +23,20 @@ class OrderStatus(str, enum.Enum):
     shipped = "shipped"
     delivered = "delivered"
     cancelled = "cancelled"
+
+
+class PaymentStatus(str, enum.Enum):
+    pending = "pending"
+    completed = "completed"
+    failed = "failed"
+    refunded = "refunded"
+
+
+class CancellationStatus(str, enum.Enum):
+    none = "none"
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
 
 
 class Book(Base):
@@ -70,11 +86,40 @@ class Order(Base):
     total_amount = Column(Numeric(10, 2), nullable=False)
     shipping_address = Column(Text, nullable=False)
     status = Column(Enum(OrderStatus, name="order_status"), nullable=False, default=OrderStatus.pending)
+    delivered_at = Column(DateTime, nullable=True)
+    cancellation_status = Column(String(20), nullable=False, default=CancellationStatus.none.value)
+    cancellation_requested_at = Column(DateTime, nullable=True)
+    cancellation_reason = Column(Text, nullable=True)
+    cancellation_reviewed_at = Column(DateTime, nullable=True)
 
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    payment = relationship("Payment", back_populates="order", uselist=False)
 
     __table_args__ = (
         CheckConstraint("total_amount >= 0", name="check_order_total_non_negative"),
+    )
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    payment_id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.order_id", ondelete="CASCADE"), nullable=False, index=True)
+    payment_method = Column(String(50), nullable=False)
+    payment_status = Column(
+        Enum(PaymentStatus, name="payment_status"),
+        nullable=False,
+        default=PaymentStatus.pending,
+    )
+    amount = Column(Numeric(10, 2), nullable=False)
+    transaction_code = Column(String(100), nullable=True)
+    created_at = Column(DateTime, server_default=func.current_timestamp())
+
+    order = relationship("Order", back_populates="payment")
+
+    __table_args__ = (
+        CheckConstraint("amount >= 0", name="check_payment_amount_non_negative_order"),
+        UniqueConstraint("order_id", name="uq_payment_order_id_order_service"),
     )
 
 
@@ -94,3 +139,15 @@ class OrderItem(Base):
         CheckConstraint("quantity > 0", name="check_order_item_quantity_positive"),
         CheckConstraint("unit_price >= 0", name="check_order_item_unit_price_non_negative"),
     )
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    user_id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), nullable=False)
+    role = Column(String(20), nullable=False, index=True)
+    account_number = Column(String(50), nullable=True, index=True)
+    balance = Column(Numeric(14, 2), nullable=False, default=0)
+    is_active = Column(Boolean, nullable=False, default=True)
+    is_hidden = Column(Boolean, nullable=False, default=False)

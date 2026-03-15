@@ -13,15 +13,21 @@ import RegisterPage from '../pages/public/RegisterPage';
 import ProfilePage from '../pages/private/ProfilePage';
 import CartPage from '../pages/private/CartPage';
 import CheckoutPage from '../pages/private/CheckoutPage';
+import VnpayReturnPage from '../pages/private/VnpayReturnPage';
 import MyOrdersPage from '../pages/private/MyOrdersPage';
 import OrderDetailPage from '../pages/private/OrderDetailPage';
 import MyPaymentsPage from '../pages/private/MyPaymentsPage';
 import BuyerDashboardPage from '../pages/private/BuyerDashboardPage';
 import SellerDashboardPage from '../pages/private/SellerDashboardPage';
 import AdminDashboardPage from '../pages/private/AdminDashboardPage';
+import AdminBuyersPage from '../pages/private/AdminBuyersPage';
+import AdminSellersPage from '../pages/private/AdminSellersPage';
+import AdminProductsPage from '../pages/private/AdminProductsPage';
+import AdminOrdersPage from '../pages/private/AdminOrdersPage';
 import SellerProductsPage from '../pages/private/SellerProductsPage';
 import SellerProductCreatePage from '../pages/private/SellerProductCreatePage';
 import SellerProductEditPage from '../pages/private/SellerProductEditPage';
+import OrdersPage from '../pages/private/OrdersPage';
 
 export default function AppRouter() {
   return (
@@ -42,6 +48,7 @@ export default function AppRouter() {
             <Route path="/dashboard" element={<BuyerDashboardPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/checkout/vnpay-return" element={<VnpayReturnPage />} />
             <Route path="/orders" element={<MyOrdersPage />} />
             <Route path="/orders/:id" element={<OrderDetailPage />} />
             <Route path="/payments" element={<MyPaymentsPage />} />
@@ -49,13 +56,19 @@ export default function AppRouter() {
 
           <Route element={<RoleProtectedRoute allowedRoles={['seller']} />}>
             <Route path="/seller/dashboard" element={<SellerDashboardPage />} />
+            <Route path="/seller/orders" element={<OrdersPage />} />
             <Route path="/seller/products" element={<SellerProductsPage />} />
             <Route path="/seller/products/new" element={<SellerProductCreatePage />} />
             <Route path="/seller/products/:id/edit" element={<SellerProductEditPage />} />
           </Route>
 
           <Route element={<RoleProtectedRoute allowedRoles={['admin']} />}>
+            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin/buyers" element={<AdminBuyersPage />} />
+            <Route path="/admin/sellers" element={<AdminSellersPage />} />
+            <Route path="/admin/products" element={<AdminProductsPage />} />
+            <Route path="/admin/orders" element={<AdminOrdersPage />} />
           </Route>
         </Route>
       </Route>

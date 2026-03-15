@@ -7,6 +7,8 @@ from .models import OrderStatus, PaymentStatus
 class CreatePaymentRequest(BaseModel):
     order_id: int
     payment_method: str = Field(..., min_length=2, max_length=50)
+    payment_status: PaymentStatus | None = None
+    transaction_code: str | None = Field(default=None, max_length=100)
 
 
 class UpdatePaymentStatusRequest(BaseModel):

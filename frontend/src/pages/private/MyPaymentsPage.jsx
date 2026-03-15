@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import useOrderStore from '../../store/orderStore';
 
 function paymentBadge(status) {
-  if (status === 'PAID') return 'bg-emerald-100 text-emerald-700';
-  if (status === 'UNPAID') return 'bg-amber-100 text-amber-700';
+  if (status === 'completed') return 'bg-emerald-100 text-emerald-700';
+  if (status === 'refunded') return 'bg-sky-100 text-sky-700';
+  if (status === 'pending') return 'bg-amber-100 text-amber-700';
   return 'bg-slate-100 text-slate-700';
 }
 

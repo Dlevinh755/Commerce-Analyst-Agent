@@ -7,6 +7,7 @@ from sqlalchemy import (
     Numeric,
     ForeignKey,
     CheckConstraint,
+    Boolean,
     func,
 )
 from sqlalchemy.orm import relationship
@@ -36,6 +37,8 @@ class Book(Base):
     price = Column(Numeric(10, 2), nullable=False)
     stock_quantity = Column(Integer, nullable=False, default=0)
     image_url = Column(String(255), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    is_hidden = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, server_default=func.current_timestamp())
 
     category = relationship("Category", back_populates="books")

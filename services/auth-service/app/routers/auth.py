@@ -1,49 +1,66 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from ..db import get_db
-from ..models import User, UserRole
-from ..schemas import UserRegister, UserLogin, UserResponse, Token
-from ..security import hash_password, verify_password, create_access_token
+from ..models import User, UserRole, RefreshToken
+from ..schemas import (
+    UserRegister,
+    UserLogin,
+    UserResponse,
+    AuthResponse,
+    RefreshTokenRequest,
+    LogoutRequest,
+    VerifyResponse,
+    MessageResponse,
+    ChangePasswordRequest,
+)
+from ..security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    get_refresh_token_expiry,
+)
 from ..dependencies import get_current_user, require_roles
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-@router.post(
-    "/register",
-    response_model=UserResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Đăng ký tài khoản mới",
-    responses={
-        201: {"description": "Tạo tài khoản thành công"},
-        400: {"description": "Username hoặc email đã tồn tại"},
-    },
-)
+def build_auth_response(user: User, refresh_token: str, access_token: str):
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": user,
+    }
+
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user_in: UserRegister, db: Session = Depends(get_db)):
-    """
-    Tạo tài khoản người dùng mới.
+    existing_user = db.query(User).filter(
+        or_(User.username == user_in.username, User.email == user_in.email)
+    ).first()
 
-    - **username**: 3–50 ký tự, phải duy nhất
-    - **password**: 6–100 ký tự
-    - **email**: địa chỉ email hợp lệ, phải duy nhất
-    - **full_name**: họ tên đầy đủ
-    - **role**: `buyer` (mặc định) | `seller` | `admin`
-    """
-    existing_username = db.query(User).filter(User.username == user_in.username).first()
-    if existing_username:
-        raise HTTPException(status_code=400, detail="Username already exists")
-
-    existing_email = db.query(User).filter(User.email == user_in.email).first()
-    if existing_email:
+    if existing_user:
+        if existing_user.username == user_in.username:
+            raise HTTPException(status_code=400, detail="Username already exists")
         raise HTTPException(status_code=400, detail="Email already exists")
+
+    requested_role = user_in.role or UserRole.buyer
+    if requested_role == UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin registration is not allowed",
+        )
 
     new_user = User(
         username=user_in.username,
         password_hash=hash_password(user_in.password),
-        email=user_in.email,
+        email=user_in.email.lower(),
         full_name=user_in.full_name,
-        role=user_in.role,
+        role=requested_role,
     )
 
     db.add(new_user)
@@ -52,22 +69,8 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
     return new_user
 
 
-@router.post(
-    "/login",
-    response_model=Token,
-    summary="Đăng nhập & lấy JWT token",
-    responses={
-        200: {"description": "Đăng nhập thành công, trả về access token"},
-        401: {"description": "Sai username hoặc password"},
-    },
-)
+@router.post("/login", response_model=AuthResponse)
 def login(credentials: UserLogin, db: Session = Depends(get_db)):
-    """
-    Xác thực người dùng và trả về JWT Bearer Token.
-
-    Token có thời hạn, dùng để gọi các API yêu cầu xác thực.
-    Copy `access_token` từ response và điền vào **Authorize** 🔒 với format: `Bearer <token>`
-    """
     user = db.query(User).filter(User.username == credentials.username).first()
     if not user or not verify_password(credentials.password, user.password_hash):
         raise HTTPException(
@@ -75,74 +78,108 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
             detail="Invalid username or password",
         )
 
-    access_token = create_access_token(
-        data={
-            "sub": str(user.user_id),
-            "username": user.username,
-            "role": user.role.value if hasattr(user.role, "value") else str(user.role),
-        }
+    role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
+
+    access_token = create_access_token(user.user_id, user.username, role_value)
+    refresh_token = create_refresh_token(user.user_id, user.username, role_value)
+
+    refresh_token_row = RefreshToken(
+        user_id=user.user_id,
+        token=refresh_token,
+        expires_at=get_refresh_token_expiry(),
+        is_revoked=False,
     )
+    db.add(refresh_token_row)
+    db.commit()
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": user,
-    }
+    return build_auth_response(user, refresh_token, access_token)
 
 
-@router.get(
-    "/me",
-    response_model=UserResponse,
-    summary="Lấy thông tin người dùng hiện tại",
-    responses={
-        200: {"description": "Thông tin tài khoản đang đăng nhập"},
-        401: {"description": "Token không hợp lệ hoặc đã hết hạn"},
-    },
-)
+@router.post("/refresh", response_model=AuthResponse)
+def refresh_token(data: RefreshTokenRequest, db: Session = Depends(get_db)):
+    payload = decode_token(data.refresh_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    if payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid token type")
+
+    token_in_db = db.query(RefreshToken).filter(RefreshToken.token == data.refresh_token).first()
+    if not token_in_db:
+        raise HTTPException(status_code=401, detail="Refresh token not found")
+
+    if token_in_db.is_revoked:
+        raise HTTPException(status_code=401, detail="Refresh token revoked")
+
+    user_id = payload.get("sub")
+    user = db.query(User).filter(User.user_id == int(user_id)).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    token_in_db.is_revoked = True
+
+    role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
+    new_access_token = create_access_token(user.user_id, user.username, role_value)
+    new_refresh_token = create_refresh_token(user.user_id, user.username, role_value)
+
+    new_refresh_row = RefreshToken(
+        user_id=user.user_id,
+        token=new_refresh_token,
+        expires_at=get_refresh_token_expiry(),
+        is_revoked=False,
+    )
+    db.add(new_refresh_row)
+    db.commit()
+
+    return build_auth_response(user, new_refresh_token, new_access_token)
+
+
+@router.post("/logout", response_model=MessageResponse)
+def logout(data: LogoutRequest, db: Session = Depends(get_db)):
+    token_in_db = db.query(RefreshToken).filter(RefreshToken.token == data.refresh_token).first()
+    if token_in_db:
+        token_in_db.is_revoked = True
+        db.commit()
+    return {"message": "Logged out successfully"}
+
+
+@router.get("/me", response_model=UserResponse)
 def me(current_user: User = Depends(get_current_user)):
-    """
-    Trả về thông tin của người dùng đang đăng nhập dựa trên JWT token.
-
-    **Yêu cầu:** Header `Authorization: Bearer <token>`
-    """
     return current_user
 
 
-@router.get(
-    "/admin-only",
-    response_model=UserResponse,
-    summary="Endpoint chỉ dành cho Admin",
-    responses={
-        200: {"description": "Thông tin admin đang đăng nhập"},
-        401: {"description": "Token không hợp lệ hoặc đã hết hạn"},
-        403: {"description": "Không đủ quyền — yêu cầu role admin"},
-    },
-)
+@router.get("/verify", response_model=VerifyResponse)
+def verify(current_user: User = Depends(get_current_user)):
+    return {"valid": True, "user": current_user}
+
+
+@router.post("/change-password", response_model=MessageResponse)
+def change_password(
+    data: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not verify_password(data.old_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Old password is incorrect")
+
+    current_user.password_hash = hash_password(data.new_password)
+    db.commit()
+
+    db.query(RefreshToken).filter(RefreshToken.user_id == current_user.user_id).update(
+        {"is_revoked": True}
+    )
+    db.commit()
+
+    return {"message": "Password changed successfully. Please login again."}
+
+
+@router.get("/admin-only", response_model=UserResponse)
 def admin_only(current_user: User = Depends(require_roles(UserRole.admin))):
-    """
-    Chỉ người dùng có role **admin** mới được truy cập.
-
-    **Yêu cầu:** Header `Authorization: Bearer <token>` với token của tài khoản admin.
-    """
     return current_user
 
 
-@router.get(
-    "/seller-or-admin",
-    response_model=UserResponse,
-    summary="Endpoint dành cho Seller hoặc Admin",
-    responses={
-        200: {"description": "Thông tin người dùng đang đăng nhập"},
-        401: {"description": "Token không hợp lệ hoặc đã hết hạn"},
-        403: {"description": "Không đủ quyền — yêu cầu role seller hoặc admin"},
-    },
-)
+@router.get("/seller-or-admin", response_model=UserResponse)
 def seller_or_admin(
     current_user: User = Depends(require_roles(UserRole.seller, UserRole.admin))
 ):
-    """
-    Chỉ người dùng có role **seller** hoặc **admin** mới được truy cập.
-
-    **Yêu cầu:** Header `Authorization: Bearer <token>` với token của tài khoản seller/admin.
-    """
     return current_user

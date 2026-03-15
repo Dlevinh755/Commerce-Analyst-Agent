@@ -77,6 +77,11 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
         )
+    if not user.is_active or user.is_hidden:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive",
+        )
 
     role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
 
@@ -115,6 +120,8 @@ def refresh_token(data: RefreshTokenRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.user_id == int(user_id)).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    if not user.is_active or user.is_hidden:
+        raise HTTPException(status_code=403, detail="User account is inactive")
 
     token_in_db.is_revoked = True
 

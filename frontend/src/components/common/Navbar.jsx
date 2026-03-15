@@ -63,12 +63,57 @@ export default function Navbar() {
               {role === 'seller' ? (
                 <>
                   <NavLink
+                    to="/seller/orders"
+                    className={({ isActive }) =>
+                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    }
+                  >
+                    Orders
+                  </NavLink>
+                  <NavLink
                     to="/seller/products"
                     className={({ isActive }) =>
                       `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
                     }
                   >
                     My Products
+                  </NavLink>
+                </>
+              ) : null}
+
+              {role === 'admin' ? (
+                <>
+                  <NavLink
+                    to="/admin/buyers"
+                    className={({ isActive }) =>
+                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    }
+                  >
+                    Buyers
+                  </NavLink>
+                  <NavLink
+                    to="/admin/sellers"
+                    className={({ isActive }) =>
+                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    }
+                  >
+                    Sellers
+                  </NavLink>
+                  <NavLink
+                    to="/admin/products"
+                    className={({ isActive }) =>
+                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    }
+                  >
+                    Products
+                  </NavLink>
+                  <NavLink
+                    to="/admin/orders"
+                    className={({ isActive }) =>
+                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    }
+                  >
+                    Orders
                   </NavLink>
                 </>
               ) : null}

@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
+import useAuth from '../../hooks/useAuth';
 
 export default function BuyerDashboardPage() {
+  const user = useAuth((state) => state.user);
+
   return (
     <section className="space-y-5">
       <div>
@@ -8,7 +11,13 @@ export default function BuyerDashboardPage() {
         <p className="mt-1 text-slate-600">Manage your shopping journey in one place.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
+        <Link className="card transition hover:-translate-y-0.5 hover:shadow-md" to="/profile">
+          <h2 className="text-lg font-semibold">Account & Balance</h2>
+          <p className="mt-2 text-sm text-slate-600">Account: {user?.account_number || '-'}</p>
+          <p className="mt-1 text-sm text-slate-600">Balance: ${Number(user?.balance || 0).toFixed(2)}</p>
+        </Link>
+
         <Link className="card transition hover:-translate-y-0.5 hover:shadow-md" to="/books">
           <h2 className="text-lg font-semibold">Browse Books</h2>
           <p className="mt-2 text-sm text-slate-600">Discover new titles and best sellers.</p>

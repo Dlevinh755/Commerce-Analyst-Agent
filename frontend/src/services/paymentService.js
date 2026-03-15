@@ -11,6 +11,7 @@ export const paymentService = {
     return api.post('/payments', {
       ...payload,
       order_id: normalizedOrderId,
+      payment_method: String(payload?.payment_method || '').trim().toUpperCase(),
     });
   },
 };

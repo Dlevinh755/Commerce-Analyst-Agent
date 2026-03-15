@@ -4,7 +4,7 @@ import useCart from '../../hooks/useCart';
 import useAuth from '../../hooks/useAuth';
 import Toast from '../../components/common/Toast';
 import { bookService } from '../../services/bookService';
-import { getFallbackBooks, normalizeBook } from '../../utils/bookMapper';
+import { normalizeBook } from '../../utils/bookMapper';
 
 export default function BookDetailPage() {
   const { id } = useParams();
@@ -15,17 +15,19 @@ export default function BookDetailPage() {
 
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [toast, setToast] = useState('');
 
   useEffect(() => {
     async function fetchDetail() {
       setLoading(true);
+      setError('');
       try {
         const { data } = await bookService.detail(id);
         setBook(normalizeBook(data));
       } catch {
-        const fallback = getFallbackBooks().find((item) => String(item.id) === String(id));
-        setBook(fallback || normalizeBook({ id, title: `Book #${id}`, price: 0 }));
+        setBook(null);
+        setError('Book not found or API unavailable.');
       } finally {
         setLoading(false);
       }
@@ -53,6 +55,10 @@ export default function BookDetailPage() {
 
   if (loading) {
     return <section className="card">Loading book details...</section>;
+  }
+
+  if (!book) {
+    return <section className="card text-slate-600">{error || 'Book not found.'}</section>;
   }
 
   return (

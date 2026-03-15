@@ -11,7 +11,7 @@ export default function SellerProductsPage() {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
-  const [deletingId, setDeletingId] = useState(null);
+  const [hidingId, setHidingId] = useState(null);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -36,16 +36,20 @@ export default function SellerProductsPage() {
     }
   }, [location.state]);
 
-  const onDelete = async (product) => {
-    setDeletingId(product.book_id);
+  const onHide = async (product) => {
+    setHidingId(product.book_id);
     try {
       await sellerProductService.remove(product.book_id);
-      setProducts((prev) => prev.filter((item) => item.book_id !== product.book_id));
-      setToast(`Deleted ${product.title}.`);
+      setProducts((prev) =>
+        prev.map((item) =>
+          item.book_id === product.book_id ? { ...item, is_hidden: true, is_active: false } : item
+        )
+      );
+      setToast(`Hidden ${product.title}.`);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Delete failed.'));
+      setToast(getErrorMessage(err, 'Hide failed.'));
     } finally {
-      setDeletingId(null);
+      setHidingId(null);
     }
   };
 
@@ -78,6 +82,7 @@ export default function SellerProductsPage() {
                 <th className="px-4 py-3 text-left font-medium">Author</th>
                 <th className="px-4 py-3 text-left font-medium">Price</th>
                 <th className="px-4 py-3 text-left font-medium">Stock</th>
+                <th className="px-4 py-3 text-left font-medium">Status</th>
                 <th className="px-4 py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
@@ -88,6 +93,10 @@ export default function SellerProductsPage() {
                   <td className="px-4 py-3 text-slate-600">{product.author}</td>
                   <td className="px-4 py-3">${Number(product.price).toFixed(2)}</td>
                   <td className="px-4 py-3">{product.stock_quantity}</td>
+                  <td className="px-4 py-3 text-xs text-slate-600">
+                    <p>Active: {product.is_active ? 'Yes' : 'No'}</p>
+                    <p>Hidden: {product.is_hidden ? 'Yes' : 'No'}</p>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
                       <Link
@@ -99,10 +108,10 @@ export default function SellerProductsPage() {
                       <button
                         type="button"
                         className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700"
-                        onClick={() => onDelete(product)}
-                        disabled={deletingId === product.book_id}
+                        onClick={() => onHide(product)}
+                        disabled={hidingId === product.book_id || product.is_hidden}
                       >
-                        {deletingId === product.book_id ? 'Deleting...' : 'Delete'}
+                        {product.is_hidden ? 'Hidden' : hidingId === product.book_id ? 'Hiding...' : 'Hide'}
                       </button>
                     </div>
                   </td>

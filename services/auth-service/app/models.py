@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, DateTime, Enum, func, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Enum, func, Boolean, ForeignKey, Numeric
 from sqlalchemy.orm import relationship
 from .db import Base
 
@@ -19,6 +19,10 @@ class User(Base):
     email = Column(String(100), unique=True, nullable=False, index=True)
     full_name = Column(String(100), nullable=False)
     role = Column(Enum(UserRole, name="user_role"), nullable=False, default=UserRole.buyer)
+    account_number = Column(String(50), nullable=True, index=True)
+    balance = Column(Numeric(14, 2), nullable=False, default=0)
+    is_active = Column(Boolean, nullable=False, default=True)
+    is_hidden = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, server_default=func.current_timestamp())
 
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")

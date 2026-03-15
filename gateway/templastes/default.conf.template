@@ -38,6 +38,15 @@ server {
         proxy_pass $auth_upstream;
     }
 
+    # Điều hướng Users management (FastAPI auth-service)
+    # Client gọi: /api/v1/users/... -> auth-service nhận: /users/...
+    location /api/v1/users {
+        set $users_upstream http://${AUTH_SERVICE_HOST}:${AUTH_SERVICE_PORT};
+        rewrite ^/api/v1/users$ /users break;
+        rewrite ^/api/v1/users/(.*)$ /users/$1 break;
+        proxy_pass $users_upstream;
+    }
+
     # Điều hướng Product Service (FastAPI)
     # Client gọi: /api/v1/products/... → product-service nhận: /...
     location /api/v1/products/ {

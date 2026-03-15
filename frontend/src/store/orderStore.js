@@ -32,7 +32,14 @@ function normalizeOrder(raw = {}) {
     id: orderId,
     order_id: orderId,
     created_at: raw.created_at ?? raw.order_date,
+    delivered_at: raw.delivered_at ?? null,
     payment_method: raw.payment_method ?? null,
+    payment_status: raw.payment_status ?? null,
+    transaction_code: raw.transaction_code ?? null,
+    cancellation_status: raw.cancellation_status ?? 'none',
+    cancellation_requested_at: raw.cancellation_requested_at ?? null,
+    cancellation_reason: raw.cancellation_reason ?? null,
+    cancellation_reviewed_at: raw.cancellation_reviewed_at ?? null,
     notes: raw.notes ?? '',
     items,
     total,
@@ -41,6 +48,20 @@ function normalizeOrder(raw = {}) {
       shipping_fee: shippingFee,
       total,
     },
+  };
+}
+
+function normalizePayment(raw = {}) {
+  return {
+    ...raw,
+    id: raw.id ?? raw.payment_id,
+    payment_id: raw.payment_id ?? raw.id,
+    order_id: raw.order_id,
+    amount: Number(raw.amount ?? 0),
+    method: raw.method ?? raw.payment_method ?? '-',
+    status: raw.status ?? raw.payment_status ?? 'pending',
+    created_at: raw.created_at ?? null,
+    transaction_code: raw.transaction_code ?? null,
   };
 }
 
@@ -94,10 +115,9 @@ const useOrderStore = create(
         try {
           const { data } = await paymentService.listMyPayments();
           const items = Array.isArray(data) ? data : data?.items || [];
-          if (items.length) {
-            set({ payments: items });
-          }
-          return items;
+          const normalized = items.map(normalizePayment);
+          set({ payments: normalized });
+          return normalized;
         } catch {
           return get().payments;
         } finally {

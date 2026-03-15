@@ -1,0 +1,102 @@
+{
+  "buyers": [
+    {
+      "username": "buyer_demo_01",
+      "password": "Buyer@123",
+      "email": "buyer_demo_01@example.com",
+      "full_name": "Buyer Demo 01",
+      "account_number": "1000000001",
+      "balance": 0,
+      "is_active": true,
+      "is_hidden": false
+    }
+  ],
+  "sellers": [
+    {
+      "username": "seller_demo_01",
+      "password": "Seller@123",
+      "email": "seller_demo_01@example.com",
+      "full_name": "Seller Demo 01",
+      "account_number": "2000000001",
+      "balance": 0,
+      "is_active": true,
+      "is_hidden": false
+    },
+    {
+      "username": "seller_demo_02",
+      "password": "Seller@123",
+      "email": "seller_demo_02@example.com",
+      "full_name": "Seller Demo 02",
+      "account_number": "2000000002",
+      "balance": 0,
+      "is_active": true,
+      "is_hidden": false
+    }
+  ],
+  "orders": [
+    {
+      "buyer_username": "buyer_demo_01",
+      "shipping_address": "123 Nguyễn Trãi, Quận 1, TP.HCM",
+      "order_date": "2026-03-10T09:15:00Z",
+      "status": "pending",
+      "items": [
+        { "seller_username": "seller_demo_01", "product_title": "Seed Product A", "quantity": 2 }
+      ]
+    },
+    {
+      "buyer_username": "buyer_demo_01",
+      "shipping_address": "456 Lê Lợi, Quận 3, TP.HCM",
+      "order_date": "2026-03-11T13:30:00Z",
+      "status": "processing",
+      "items": [
+        { "seller_username": "seller_demo_02", "product_title": "Seed Product B", "quantity": 1 }
+      ]
+    },
+    {
+      "buyer_username": "buyer_demo_01",
+      "shipping_address": "789 Trần Hưng Đạo, Quận 5, TP.HCM",
+      "order_date": "2026-03-12T16:45:00Z",
+      "status": "shipped",
+      "items": [
+        { "seller_username": "seller_demo_01", "product_title": "Seed Product A", "quantity": 1 },
+        { "seller_username": "seller_demo_02", "product_title": "Seed Product B", "quantity": 1 }
+      ]
+    },
+    {
+      "buyer_username": "buyer_demo_01",
+      "shipping_address": "12 Lý Tự Trọng, Quận 1, TP.HCM",
+      "order_date": "2026-03-13T10:00:00Z",
+      "delivered_at": "2026-03-14T15:20:00Z",
+      "status": "delivered",
+      "items": [
+        { "seller_username": "seller_demo_01", "product_title": "Seed Product A", "quantity": 1 }
+      ]
+    }
+  ],
+  "products": [
+    {
+      "seller_username": "seller_demo_01",
+      "title": "Seed Product A",
+      "author": "Seed Seller 01",
+      "description": "Product seeded for local dev environment.",
+      "price": 15.5,
+      "stock_quantity": 20,
+      "category_name": "General",
+      "image_url": null,
+      "is_active": true,
+      "is_hidden": false
+    },
+    {
+      "seller_username": "seller_demo_02",
+      "title": "Seed Product B",
+      "author": "Seed Seller 02",
+      "description": "Another seeded product for local development.",
+      "price": 32,
+      "stock_quantity": 12,
+      "category_name": "General",
+      "image_url": null,
+      "is_active": true,
+      "is_hidden": false
+    }
+  ]
+}

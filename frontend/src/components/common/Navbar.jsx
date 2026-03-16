@@ -6,7 +6,9 @@ import { getDefaultRouteByRole, normalizeRole } from '../../utils/role';
 const baseLinkClass = 'rounded-md px-3 py-2 text-sm font-medium';
 
 export default function Navbar() {
-  const { isAuthenticated, logout, user } = useAuth();
+  const isAuthenticated = useAuth((state) => state.isAuthenticated);
+  const logout = useAuth((state) => state.logout);
+  const user = useAuth((state) => state.user);
   const totalItems = useCart((state) => state.totalItems());
   const role = normalizeRole(user?.role);
   const dashboardPath = getDefaultRouteByRole(role);

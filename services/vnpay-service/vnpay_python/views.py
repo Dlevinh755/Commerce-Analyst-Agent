@@ -130,45 +130,65 @@ def payment(request):
 
 def payment_ipn(request):
     inputData = request.GET
-    if inputData:
-        vnp = vnpay()
-        vnp.responseData = inputData.dict()
-        order_id = inputData['vnp_TxnRef']
-        amount = inputData['vnp_Amount']
-        order_desc = inputData['vnp_OrderInfo']
-        vnp_TransactionNo = inputData['vnp_TransactionNo']
-        vnp_ResponseCode = inputData['vnp_ResponseCode']
-        vnp_TmnCode = inputData['vnp_TmnCode']
-        vnp_PayDate = inputData['vnp_PayDate']
-        vnp_BankCode = inputData['vnp_BankCode']
-        vnp_CardType = inputData['vnp_CardType']
-        if vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
-            # Check & Update Order Status in your Database
-            # Your code here
-            firstTimeUpdate = True
-            totalamount = True
-            if totalamount:
-                if firstTimeUpdate:
-                    if vnp_ResponseCode == '00':
-                        print('Payment Success. Your code implement here')
-                    else:
-                        print('Payment Error. Your code implement here')
+    if not inputData:
+        return JsonResponse({'RspCode': '99', 'Message': 'Invalid request'})
 
-                    # Return VNPAY: Merchant update success
-                    result = JsonResponse({'RspCode': '00', 'Message': 'Confirm Success'})
-                else:
-                    # Already Update
-                    result = JsonResponse({'RspCode': '02', 'Message': 'Order Already Update'})
-            else:
-                # invalid amount
-                result = JsonResponse({'RspCode': '04', 'Message': 'invalid amount'})
-        else:
-            # Invalid Signature
-            result = JsonResponse({'RspCode': '97', 'Message': 'Invalid Signature'})
-    else:
-        result = JsonResponse({'RspCode': '99', 'Message': 'Invalid request'})
+    vnp = vnpay()
+    vnp.responseData = inputData.dict()
 
-    return result
+    if not vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
+        return JsonResponse({'RspCode': '97', 'Message': 'Invalid Signature'})
+
+    vnp_ResponseCode = inputData.get('vnp_ResponseCode', '')
+    vnp_TransactionStatus = inputData.get('vnp_TransactionStatus', '')
+    order_id_raw = inputData.get('vnp_TxnRef', '')
+    amount_raw = inputData.get('vnp_Amount', '')
+    vnp_TransactionNo = inputData.get('vnp_TransactionNo', '')
+    vnp_TmnCode = inputData.get('vnp_TmnCode', '')
+
+    if vnp_TmnCode != settings.VNPAY_TMN_CODE:
+        return JsonResponse({'RspCode': '99', 'Message': 'Invalid TmnCode'})
+
+    # Failed or cancelled transactions should be acknowledged so VNPay stops retrying.
+    if vnp_ResponseCode != '00' or vnp_TransactionStatus != '00':
+        return JsonResponse({'RspCode': '00', 'Message': 'Confirm Success'})
+
+    try:
+        order_id = int(order_id_raw)
+    except (ValueError, TypeError):
+        return JsonResponse({'RspCode': '01', 'Message': 'Order not found'})
+
+    try:
+        amount = int(amount_raw)
+    except (ValueError, TypeError):
+        return JsonResponse({'RspCode': '04', 'Message': 'Invalid amount'})
+
+    internal_secret = settings.INTERNAL_SERVICE_SECRET
+    if not internal_secret:
+        return JsonResponse({'RspCode': '99', 'Message': 'Service misconfigured'})
+
+    try:
+        resp = requests.post(
+            f'{settings.PAYMENT_SERVICE_URL}/payments/internal/vnpay-confirm',
+            json={
+                'order_id': order_id,
+                'amount': amount,
+                'transaction_code': vnp_TransactionNo,
+            },
+            headers={'X-Internal-Secret': internal_secret},
+            timeout=5,
+        )
+        if resp.status_code in (200, 201):
+            return JsonResponse({'RspCode': '00', 'Message': 'Confirm Success'})
+        if resp.status_code == 404:
+            return JsonResponse({'RspCode': '01', 'Message': 'Order not found'})
+        if resp.status_code == 409:
+            return JsonResponse({'RspCode': '02', 'Message': 'Order already updated'})
+        if resp.status_code == 422:
+            return JsonResponse({'RspCode': '04', 'Message': 'Invalid amount'})
+        return JsonResponse({'RspCode': '02', 'Message': 'Payment service error'})
+    except Exception:
+        return JsonResponse({'RspCode': '99', 'Message': 'Internal error'})
 
 
 def payment_return(request):

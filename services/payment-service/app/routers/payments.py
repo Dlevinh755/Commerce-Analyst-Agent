@@ -1,6 +1,6 @@
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
 
 from ..db import get_db
@@ -12,11 +12,14 @@ from ..schemas import (
     PaymentResponse,
     PaymentListResponse,
     MessageResponse,
+    InternalVnpayConfirmRequest,
 )
 from ..deps import get_order_or_404, get_payment_or_404
 from ..common.auth_jwt import require_roles
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
+
+INTERNAL_SERVICE_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "")
 
 
 def _is_simulation_enabled() -> bool:
@@ -351,6 +354,59 @@ def simulate_payment_failed(
 
     apply_order_status_from_payment(payment.order, PaymentStatus.failed)
 
+    db.commit()
+    db.refresh(payment)
+
+    payment = (
+        db.query(Payment)
+        .options(joinedload(Payment.order))
+        .filter(Payment.payment_id == payment.payment_id)
+        .first()
+    )
+    return serialize_payment(payment)
+
+
+@router.post("/internal/vnpay-confirm", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
+def internal_vnpay_confirm(
+    data: InternalVnpayConfirmRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Server-to-server endpoint called by vnpay-service IPN handler to confirm payment."""
+    secret = request.headers.get("X-Internal-Secret", "")
+    if not INTERNAL_SERVICE_SECRET or secret != INTERNAL_SERVICE_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    order = (
+        db.query(Order)
+        .options(joinedload(Order.payment))
+        .filter(Order.order_id == data.order_id)
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.payment:
+        if order.payment.payment_status == PaymentStatus.completed:
+            return serialize_payment(order.payment)
+        raise HTTPException(status_code=409, detail="Payment already exists for this order")
+
+    if order.status == OrderStatus.cancelled:
+        raise HTTPException(status_code=409, detail="Cancelled order cannot be paid")
+
+    expected_amount = max(1, int(round(float(order.total_amount) * 25000))) * 100
+    if data.amount != expected_amount:
+        raise HTTPException(status_code=422, detail="Invalid amount")
+
+    payment = Payment(
+        order_id=order.order_id,
+        payment_method="VNPAY",
+        payment_status=PaymentStatus.completed,
+        amount=order.total_amount,
+        transaction_code=(data.transaction_code or None),
+    )
+    db.add(payment)
+    apply_order_status_from_payment(order, PaymentStatus.completed)
     db.commit()
     db.refresh(payment)
 

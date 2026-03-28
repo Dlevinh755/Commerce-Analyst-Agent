@@ -222,7 +222,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - VNPAY_RETURN_URL=https://bookstore.ailab.engineer/checkout/vnpay-return
-      - VNPAY_IPN_URL=https://bookstore.ailab.engineer/api/v1/vnpay/payment_ipn
+      - VNPAY_IPN_URL=https://payment.ailab.engineer/api/v1/vnpay/payment_ipn
       - PAYMENT_SERVICE_URL=http://payment_service:8004
       - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-me-internal-secret}
       - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,pay.bookstore.ailab.engineer,bookstore.ailab.engineer

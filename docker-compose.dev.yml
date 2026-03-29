@@ -256,6 +256,19 @@ services:
     container_name: cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
+  
+  paymenttunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: paymenttunnel
+    restart: unless-stopped
+    # Thay vì dùng --token, ta trỏ tới file config
+    command: tunnel --config /etc/cloudflared/cloudflare-payment.yml run
+    volumes:
+      - ./config:/etc/cloudflared:ro
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARED_PAYMENT_TUNNEL_TOKEN}
+      - TUNNEL_TRANSPORT_PROTOCOL=http2 # Ép sử dụng TCP để ổn định hơn UDP/QUIC
+  
 volumes:
   postgres_data:
   mongo_data:

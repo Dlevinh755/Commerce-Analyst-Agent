@@ -1,0 +1,7 @@
+tunnel: ${CLOUDFLARED_PAYMENT_TUNNEL_ID}
+credentials-file: /etc/cloudflared/${CLOUDFLARED_PAYMENT_TUNNEL_ID}.json
+protocol: http2
+ingress:
+  - hostname: payment.ailab.engineer
+    service: http://api_gateway_no_ssl:80 
+  - service: http_status:404

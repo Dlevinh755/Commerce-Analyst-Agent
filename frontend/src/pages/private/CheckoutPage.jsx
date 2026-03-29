@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useCart from '../../hooks/useCart';
 import useAuth from '../../hooks/useAuth';
@@ -30,6 +30,9 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [notes, setNotes] = useState('');
   const [localError, setLocalError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLockedRef = useRef(false);
+  const redirectingRef = useRef(false);
 
   useEffect(() => {
     devLog('mount:fetchCart');
@@ -38,8 +41,15 @@ export default function CheckoutPage() {
 
   const submitCheckout = async (event) => {
     event.preventDefault();
+
+    if (submitLockedRef.current) {
+      devLog('submit:blocked-duplicate');
+      return;
+    }
+
     setLocalError('');
     clearError();
+    redirectingRef.current = false;
 
     devLog('submit:start', {
       itemCount: items.length,
@@ -62,6 +72,9 @@ export default function CheckoutPage() {
       setLocalError('Shipping address must be at least 5 characters.');
       return;
     }
+
+    submitLockedRef.current = true;
+    setIsSubmitting(true);
 
     try {
       if (paymentMethod === 'VNPAY') {
@@ -107,6 +120,7 @@ export default function CheckoutPage() {
         }
 
         devLog('submit:vnpay-redirect', { orderId: numericOrderId, hasPaymentUrl: Boolean(paymentUrl) });
+        redirectingRef.current = true;
         window.location.href = paymentUrl;
         return;
       }
@@ -140,6 +154,11 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error(CHECKOUT_LOG_PREFIX, 'submit:error', error?.response?.status, error?.response?.data || error?.message);
       setLocalError(error?.response?.data?.detail || error?.message || 'Checkout failed.');
+    } finally {
+      if (!redirectingRef.current) {
+        submitLockedRef.current = false;
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -215,8 +234,8 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <button type="submit" className="btn-primary mt-4 w-full" disabled={isLoading}>
-            {isLoading ? 'Processing...' : paymentMethod === 'VNPAY' ? 'Pay with VNPay' : 'Place Order'}
+          <button type="submit" className="btn-primary mt-4 w-full" disabled={isLoading || isSubmitting}>
+            {isLoading || isSubmitting ? 'Processing...' : paymentMethod === 'VNPAY' ? 'Pay with VNPay' : 'Place Order'}
           </button>
         </aside>
       </form>

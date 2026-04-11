@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react';
 import { orderService } from '../../services/orderService';
 import { getErrorMessage } from '../../utils/errorMessage';
 import Toast from '../../components/common/Toast';
+import useAuth from '../../hooks/useAuth';
 
 export default function OrdersPage() {
+  const user = useAuth((state) => state.user);
+  const currentSellerId = Number(user?.user_id || 0);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -104,8 +107,17 @@ export default function OrdersPage() {
               {orders.map((order) => {
                 const status = String(order.status || '').toLowerCase();
                 const cancellationStatus = String(order.cancellation_status || 'none').toLowerCase();
-                const canMarkShipped = status === 'pending' || status === 'processing';
+                const mySellerOrder = Array.isArray(order.seller_orders)
+                  ? order.seller_orders.find((item) => Number(item?.seller_id) === currentSellerId)
+                  : null;
+                const mySellerStatus = String(mySellerOrder?.status || '').toLowerCase();
+                const canMarkShipped = mySellerStatus
+                  ? ['pending', 'processing', 'ready_to_ship'].includes(mySellerStatus)
+                  : status === 'pending' || status === 'processing';
                 const hasPendingCancellation = status === 'shipped' && cancellationStatus === 'pending';
+                const myItemCount = Array.isArray(order.items)
+                  ? order.items.filter((item) => Number(item?.seller_id) === currentSellerId).length
+                  : 0;
                 return (
                   <tr key={order.order_id}>
                     <td className="px-4 py-3 font-medium">#{order.order_id}</td>
@@ -117,7 +129,10 @@ export default function OrdersPage() {
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
-                          {order.status}
+                          order:{order.status}
+                        </span>
+                        <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700">
+                          my-items:{mySellerOrder?.status || 'n/a'} ({myItemCount})
                         </span>
                         {cancellationStatus !== 'none' ? (
                           <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
@@ -153,7 +168,7 @@ export default function OrdersPage() {
                           onClick={() => onMarkShipped(order.order_id)}
                           disabled={shippingOrderId === order.order_id}
                         >
-                          {shippingOrderId === order.order_id ? 'Updating...' : 'Mark shipped'}
+                          {shippingOrderId === order.order_id ? 'Updating...' : 'Mark my items shipped'}
                         </button>
                       ) : (
                         <span className="text-xs text-slate-500">-</span>

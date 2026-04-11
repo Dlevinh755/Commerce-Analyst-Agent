@@ -4,6 +4,11 @@ import { authService } from '../services/authService';
 import useCartStore from './cartStore';
 import { clearAccessToken, setAccessToken } from '../utils/token';
 
+
+function shouldLoadCart(user) {
+  return String(user?.role || '').toLowerCase() === 'buyer';
+}
+
 const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -22,7 +27,11 @@ const useAuthStore = create(
             accessToken: data.access_token,
             isAuthenticated: true,
           });
-          await useCartStore.getState().fetchCart();
+          if (shouldLoadCart(data.user)) {
+            await useCartStore.getState().fetchCart();
+          } else {
+            useCartStore.setState({ items: [], isLoading: false, error: '' });
+          }
           return data;
         } finally {
           set({ isLoading: false });
@@ -37,7 +46,11 @@ const useAuthStore = create(
       fetchProfile: async () => {
         const { data } = await authService.me();
         set({ user: data, isAuthenticated: true });
-        await useCartStore.getState().fetchCart();
+        if (shouldLoadCart(data)) {
+          await useCartStore.getState().fetchCart();
+        } else {
+          useCartStore.setState({ items: [], isLoading: false, error: '' });
+        }
         return data;
       },
 

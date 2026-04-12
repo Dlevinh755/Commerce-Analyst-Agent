@@ -11,20 +11,67 @@ const devLog = (...args) => {
 };
 
 function normalizeCartItem(raw = {}) {
+  const book = raw.book ?? {};
+
   return {
-    id: raw.book_id ?? raw.book?.book_id,
-    cartId: raw.cart_id,
-    title: raw.book?.title ?? 'Untitled Book',
-    author: raw.book?.author ?? 'Unknown Author',
-    price: Number(raw.unit_price ?? raw.book?.price ?? 0),
+    id: raw.book_id ?? book.book_id ?? book.id ?? raw.bookId ?? raw.id,
+    cartId: raw.cart_id ?? raw.cartId,
+    title: book.title ?? 'Untitled Book',
+    author: book.author ?? 'Unknown Author',
+    price: Number(raw.unit_price ?? book.price ?? 0),
     quantity: Number(raw.quantity ?? 0),
-    cover: raw.book?.image_url ?? '',
-    stock: Number(raw.book?.stock_quantity ?? 0),
+    cover:
+      book.image_url ??
+      book.cover ??
+      book.image ??
+      book.thumbnail ??
+      raw.image_url ??
+      raw.cover ??
+      raw.image ??
+      '',
+    stock: Number(book.stock_quantity ?? 0),
   };
 }
 
 function isAuthenticatedCart() {
   return Boolean(getAccessToken());
+}
+
+function isUnauthorized(error) {
+  return Number(error?.response?.status) === 401;
+}
+
+function normalizeItemRef(itemRef) {
+  if (typeof itemRef === 'object' && itemRef !== null) {
+    return {
+      cartId: itemRef.cartId ?? null,
+      bookId: itemRef.bookId ?? itemRef.id ?? null,
+    };
+  }
+
+  return { cartId: null, bookId: itemRef ?? null };
+}
+
+function findItemByRef(items, itemRef) {
+  const ref = normalizeItemRef(itemRef);
+  if (ref.cartId != null) {
+    return items.find((entry) => entry.cartId === ref.cartId) ?? null;
+  }
+  if (ref.bookId != null) {
+    return items.find((entry) => entry.id === ref.bookId) ?? null;
+  }
+  return null;
+}
+
+function isSameItem(entry, itemRef) {
+  const ref = normalizeItemRef(itemRef);
+  if (ref.cartId != null) {
+    return entry.cartId === ref.cartId;
+  }
+  if (ref.bookId != null) {
+    return entry.id === ref.bookId;
+  }
+  return false;
 }
 
 const useCartStore = create(
@@ -50,6 +97,12 @@ const useCartStore = create(
           set({ items, isLoading: false, error: '' });
           return items;
         } catch (error) {
+          if (isUnauthorized(error)) {
+            devLog('fetchCart:unauthorized');
+            set({ items: [], isLoading: false, error: 'Session expired. Please login again.' });
+            return [];
+          }
+
           console.error(CART_LOG_PREFIX, 'fetchCart:error', error?.response?.status, error?.response?.data || error?.message);
           set({ isLoading: false, error: error?.response?.data?.detail || 'Could not load cart.' });
           return get().items;
@@ -96,42 +149,67 @@ const useCartStore = create(
         return { ...book, quantity };
       },
 
-      removeItem: async (bookId) => {
-        devLog('removeItem:start', { bookId, hasToken: isAuthenticatedCart() });
-        if (isAuthenticatedCart()) {
-          const item = get().items.find((entry) => entry.id === bookId);
-          if (item?.cartId) {
+      removeItem: async (itemRef) => {
+        devLog('removeItem:start', { itemRef, hasToken: isAuthenticatedCart() });
+        const item = findItemByRef(get().items, itemRef);
+        try {
+          if (isAuthenticatedCart() && item?.cartId) {
             await cartService.removeItem(item.cartId);
           }
+          set({
+            items: get().items.filter((entry) => !isSameItem(entry, itemRef)),
+            error: '',
+          });
+          devLog('removeItem:done', { itemRef, remaining: get().items.length });
+        } catch (error) {
+          if (isUnauthorized(error)) {
+            devLog('removeItem:unauthorized');
+            set({ items: [], error: 'Session expired. Please login again.' });
+            return;
+          }
+
+          console.error(CART_LOG_PREFIX, 'removeItem:error', error?.response?.status, error?.response?.data || error?.message);
+          set({ error: error?.response?.data?.detail || 'Could not remove item.' });
         }
-        set({ items: get().items.filter((item) => item.id !== bookId) });
-        devLog('removeItem:done', { bookId, remaining: get().items.length });
       },
 
-      updateQuantity: async (bookId, quantity) => {
-        devLog('updateQuantity:start', { bookId, quantity, hasToken: isAuthenticatedCart() });
+      updateQuantity: async (itemRef, quantity) => {
+        devLog('updateQuantity:start', { itemRef, quantity, hasToken: isAuthenticatedCart() });
         if (quantity <= 0) {
-          await get().removeItem(bookId);
+          await get().removeItem(itemRef);
           return;
         }
 
-        if (isAuthenticatedCart()) {
-          const item = get().items.find((entry) => entry.id === bookId);
-          if (item?.cartId) {
-            const { data } = await cartService.updateItem(item.cartId, { quantity });
+        const currentItem = findItemByRef(get().items, itemRef);
+        if (!currentItem) {
+          return;
+        }
+
+        try {
+          if (isAuthenticatedCart() && currentItem.cartId) {
+            const { data } = await cartService.updateItem(currentItem.cartId, { quantity });
             const normalized = normalizeCartItem(data);
             set({
-              items: get().items.map((entry) => (entry.id === bookId ? normalized : entry)),
+              items: get().items.map((entry) => (isSameItem(entry, itemRef) ? normalized : entry)),
+              error: '',
             });
             return;
           }
-        }
 
-        set({
-          items: get().items.map((item) =>
-            item.id === bookId ? { ...item, quantity } : item
-          ),
-        });
+          set({
+            items: get().items.map((entry) => (isSameItem(entry, itemRef) ? { ...entry, quantity } : entry)),
+            error: '',
+          });
+        } catch (error) {
+          if (isUnauthorized(error)) {
+            devLog('updateQuantity:unauthorized');
+            set({ items: [], error: 'Session expired. Please login again.' });
+            return;
+          }
+
+          console.error(CART_LOG_PREFIX, 'updateQuantity:error', error?.response?.status, error?.response?.data || error?.message);
+          set({ error: error?.response?.data?.detail || 'Could not update quantity.' });
+        }
       },
 
       clearCart: async () => {

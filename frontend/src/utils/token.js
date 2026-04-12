@@ -36,6 +36,7 @@ export function setAccessToken(token) {
 
 export function clearAccessToken() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(AUTH_STORE_KEY);
 }
 
 export { ACCESS_TOKEN_KEY };

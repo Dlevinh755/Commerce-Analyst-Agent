@@ -71,18 +71,11 @@ const useAuthStore = create(
       }),
       onRehydrateStorage: () => (state) => {
         const token = state?.accessToken;
-        console.log('[authStore] Rehydrating from localStorage', { 
-          hasToken: !!token, 
-          isAuthenticated: state?.isAuthenticated,
-          userRole: state?.user?.role 
-        });
         if (token) {
           setAccessToken(token);
         } else {
           clearAccessToken();
         }
-        // Mark hydration as complete
-        console.log('[authStore] Setting isHydrated to true');
         useAuthStore.setState({ isHydrated: true });
       },
     }

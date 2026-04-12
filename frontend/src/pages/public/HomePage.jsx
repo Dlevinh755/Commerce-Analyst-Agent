@@ -52,7 +52,10 @@ export default function HomePage() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link to="/books" className="btn-primary bg-white text-brand-700 hover:bg-slate-100">
+          <Link
+            to="/books"
+            className="btn-primary bg-white text-brand-700 hover:bg-brand-100 hover:text-brand-300"
+          >
             Browse Books
           </Link>
           <Link to="/register" className="rounded-lg border border-white/40 px-4 py-2 text-white hover:bg-white/10">

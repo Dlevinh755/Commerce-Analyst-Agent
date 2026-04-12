@@ -20,7 +20,6 @@ export default function BookListPage() {
   const [toast, setToast] = useState('');
 
   const [searchText, setSearchText] = useState(searchFromUrl);
-  const [submittedSearch, setSubmittedSearch] = useState(searchFromUrl);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [page, setPage] = useState(1);
@@ -45,12 +44,17 @@ export default function BookListPage() {
     fetchBooks();
   }, []);
 
+  useEffect(() => {
+    setSearchText(searchFromUrl);
+    setPage(1);
+  }, [searchFromUrl]);
+
   const categories = useMemo(() => {
     return [...new Set(books.map((book) => book.category))].sort();
   }, [books]);
 
   const filteredAndSortedBooks = useMemo(() => {
-    const keyword = submittedSearch.trim().toLowerCase();
+    const keyword = searchText.trim().toLowerCase();
 
     let result = books.filter((book) => {
       const matchesKeyword =
@@ -71,7 +75,7 @@ export default function BookListPage() {
     }
 
     return result;
-  }, [books, submittedSearch, selectedCategory, sortBy]);
+  }, [books, searchText, selectedCategory, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedBooks.length / ITEMS_PER_PAGE));
   const pagedBooks = filteredAndSortedBooks.slice(
@@ -81,7 +85,6 @@ export default function BookListPage() {
 
   const onSearchSubmit = (event) => {
     event.preventDefault();
-    setSubmittedSearch(searchText);
     setPage(1);
   };
 

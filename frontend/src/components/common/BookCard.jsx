@@ -32,7 +32,8 @@ export default function BookCard({ book, onUnauthorized, onAddedToCart }) {
   };
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <article className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+      <div className="pointer-events-none absolute inset-0 bg-black/10 opacity-0 transition group-hover:opacity-100" />
       <img src={book.cover} alt={book.title} className="h-52 w-full object-cover" />
       <div className="space-y-2 p-4">
         <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">

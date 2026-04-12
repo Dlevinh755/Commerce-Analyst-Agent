@@ -56,7 +56,7 @@ export default function LoginPage() {
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          <button className="btn-primary w-full" type="submit" disabled={isLoading}>
+          <button className="btn-primary w-full" type="submit" disabled={Boolean(isLoading)}>
             {isLoading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>

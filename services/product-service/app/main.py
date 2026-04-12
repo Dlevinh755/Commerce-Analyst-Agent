@@ -8,6 +8,9 @@ from fastapi.staticfiles import StaticFiles
 from .db import Base, engine
 from .routers import categories, books
 
+
+MIGRATION_SQL_PATH = Path("/app/migrations/20260411_add_book_review_metrics.sql")
+
 app = FastAPI(
     title="Books Service",
     version="1.0.0",
@@ -27,6 +30,11 @@ with engine.begin() as connection:
     connection.execute(
         text("ALTER TABLE books ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE")
     )
+
+    if MIGRATION_SQL_PATH.exists():
+        sql_text = MIGRATION_SQL_PATH.read_text(encoding="utf-8")
+        for statement in [chunk.strip() for chunk in sql_text.split(";") if chunk.strip()]:
+            connection.execute(text(statement))
 
 
 def _is_dev_seed_enabled() -> bool:
@@ -53,12 +61,15 @@ def _load_dev_seed_data() -> dict:
 def _apply_seed_products(seed_data: dict) -> None:
     products = seed_data.get("products") if isinstance(seed_data.get("products"), list) else []
     if not products:
+        print("[product-service] No products found in seed data.")
         return
 
+    print(f"[product-service] Seeding {len(products)} products...")
     pending_products = [entry for entry in products if isinstance(entry, dict)]
 
     for _ in range(10):
         if not pending_products:
+            print(f"[product-service] ✓ All {len(products)} products seeded successfully.")
             return
 
         next_pending: list[dict] = []
@@ -173,6 +184,9 @@ def _apply_seed_products(seed_data: dict) -> None:
                                 price,
                                 stock_quantity,
                                 image_url,
+                                purchase_count,
+                                rating_avg,
+                                rating_count,
                                 is_active,
                                 is_hidden
                             ) VALUES (
@@ -185,6 +199,9 @@ def _apply_seed_products(seed_data: dict) -> None:
                                 :price,
                                 :stock_quantity,
                                 :image_url,
+                                0,
+                                0,
+                                0,
                                 :is_active,
                                 :is_hidden
                             )

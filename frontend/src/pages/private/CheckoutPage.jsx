@@ -15,7 +15,8 @@ const devLog = (...args) => {
 };
 
 export default function CheckoutPage() {
-  const items = useCart((state) => state.items);
+  const itemsRaw = useCart((state) => state.items);
+  const items = Array.isArray(itemsRaw) ? itemsRaw : [];
   const fetchCart = useCart((state) => state.fetchCart);
   const totalAmount = useCart((state) => state.totalAmount());
   const clearCart = useCart((state) => state.clearCart);

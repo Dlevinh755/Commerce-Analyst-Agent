@@ -245,8 +245,10 @@ def _parse_seed_datetime(value) -> datetime | None:
 def _apply_seed_orders(seed_data: dict) -> None:
     seed_orders = seed_data.get("orders")
     if not isinstance(seed_orders, list) or not seed_orders:
+        print("[order-service] No orders found in seed data.")
         return
 
+    print(f"[order-service] Seeding {len(seed_orders)} orders...")
     db = SessionLocal()
     try:
         for entry in seed_orders:

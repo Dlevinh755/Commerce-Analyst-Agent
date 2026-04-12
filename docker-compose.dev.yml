@@ -89,6 +89,8 @@ services:
       - ORDER_SERVICE_PORT=${ORDER_SERVICE_PORT}
       - PAYMENT_SERVICE_HOST=payment_service
       - PAYMENT_SERVICE_PORT=${PAYMENT_SERVICE_PORT}
+      - REVIEW_SERVICE_HOST=review_service
+      - REVIEW_SERVICE_PORT=${REVIEW_SERVICE_PORT:-8006}
       - VNPAY_SERVICE_HOST=vnpay_service
       - VNPAY_SERVICE_PORT=${VNPAY_SERVICE_PORT:-8005}
       - KAFKA_UI_HOST=${KAFKA_UI_HOST}
@@ -140,6 +142,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - PUBLIC_PRODUCTS_BASE_URL=${PUBLIC_PRODUCTS_BASE_URL:-http://localhost/api/v1/products}
+      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-me-internal-secret}
       - DEV_AUTO_SEED=true
       - DEV_SEED_FILE=/app/dev-seeds.json
     ports:
@@ -188,6 +191,8 @@ services:
       - DEV_AUTO_SEED=true
       - DEV_SEED_FILE=/app/dev-seeds.json
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - PRODUCT_SERVICE_URL=http://product-service:8001
+      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-me-internal-secret}
     ports:
       - "${ORDER_SERVICE_PORT:-8003}:8003"
     volumes:
@@ -212,6 +217,28 @@ services:
       - ./services/payment-service:/app
     depends_on:
       - postgres-db
+
+  review_service:
+    build: ./services/review-service
+    container_name: review_service
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - MONGO_USER=${MONGO_USER}
+      - MONGO_PASS=${MONGO_PASS}
+      - MONGO_HOST=mongo-db
+      - MONGO_PORT=27017
+      - MONGO_DB_NAME=review_db
+      - ORDER_SERVICE_URL=http://order_service:8003
+      - PRODUCT_SERVICE_URL=http://product-service:8001
+      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-me-internal-secret}
+    ports:
+      - "${REVIEW_SERVICE_PORT:-8006}:8006"
+    depends_on:
+      - mongo-db
+      - order_service
+      - product-service
 
   vnpay_service:
     build: ./services/vnpay-service
@@ -246,6 +273,9 @@ services:
     environment:
       - VITE_API_BASE_URL=/api/v1
       - VITE_DEV_PROXY_TARGET=http://api_gateway_no_ssl:80
+      - VITE_HMR_HOST=bookstore.ailab.engineer
+      - VITE_HMR_PROTOCOL=wss
+      - VITE_HMR_CLIENT_PORT=443
     depends_on:
       - gateway
     networks:

@@ -5,6 +5,7 @@ import useAuth from '../../hooks/useAuth';
 import useOrderStore from '../../store/orderStore';
 import { orderService } from '../../services/orderService';
 import { vnpayService } from '../../services/vnpayService';
+import { bookReviewsApi } from '../../services/bookReviewsApi';
 import Toast from '../../components/common/Toast';
 import { getErrorMessage } from '../../utils/errorMessage';
 
@@ -19,6 +20,9 @@ export default function OrderDetailPage() {
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [submittingReviewBookId, setSubmittingReviewBookId] = useState(null);
+  const [reviewsByBookId, setReviewsByBookId] = useState({});
+  const [reviewDrafts, setReviewDrafts] = useState({});
   const [toast, setToast] = useState('');
 
   const vnpResponseCode = searchParams.get('vnp_ResponseCode');
@@ -39,6 +43,28 @@ export default function OrderDetailPage() {
         return;
       }
       setOrder(data);
+
+      try {
+        const { data: myReviews } = await bookReviewsApi.listMyByOrder(data.id || data.order_id);
+        const reviewMap = (Array.isArray(myReviews) ? myReviews : []).reduce((acc, review) => {
+          acc[Number(review.book_id)] = review;
+          return acc;
+        }, {});
+        setReviewsByBookId(reviewMap);
+
+        const drafts = {};
+        for (const item of data.items || []) {
+          const key = Number(item.book_id);
+          const existing = reviewMap[key];
+          drafts[key] = {
+            rating: Number(existing?.rating || 5),
+            comment: existing?.comment || '',
+          };
+        }
+        setReviewDrafts(drafts);
+      } catch {
+        setReviewsByBookId({});
+      }
     }
 
     loadDetail();
@@ -117,6 +143,39 @@ export default function OrderDetailPage() {
     }
   };
 
+  const isOrderDelivered = ['delivered', 'partially_delivered'].includes(String(order?.status || '').toLowerCase());
+
+  const onReviewDraftChange = (bookId, field, value) => {
+    setReviewDrafts((prev) => ({
+      ...prev,
+      [bookId]: {
+        ...(prev[bookId] || { rating: 5, comment: '' }),
+        [field]: value,
+      },
+    }));
+  };
+
+  const onSubmitReview = async (bookId) => {
+    if (!order) return;
+    const draft = reviewDrafts[bookId] || { rating: 5, comment: '' };
+    setSubmittingReviewBookId(bookId);
+    try {
+      const payload = {
+        order_id: Number(order.id || order.order_id),
+        book_id: Number(bookId),
+        rating: Number(draft.rating || 5),
+        comment: String(draft.comment || '').trim() || null,
+      };
+      const { data } = await bookReviewsApi.upsert(payload);
+      setReviewsByBookId((prev) => ({ ...prev, [bookId]: data }));
+      setToast('Review saved successfully.');
+    } catch (err) {
+      setToast(getErrorMessage(err, 'Could not save review.'));
+    } finally {
+      setSubmittingReviewBookId(null);
+    }
+  };
+
   if (isLoading && !order) {
     return <section className="card">Loading order details...</section>;
   }
@@ -186,15 +245,62 @@ export default function OrderDetailPage() {
         <div className="card lg:col-span-2">
           <h2 className="text-lg font-semibold">Items</h2>
           <div className="mt-3 space-y-3">
-            {(order.items || []).map((item) => (
-              <div key={item.id} className="flex items-center justify-between border-b border-slate-100 pb-3 last:border-none last:pb-0">
-                <div>
-                  <p className="font-medium">{item.title}</p>
-                  <p className="text-sm text-slate-500">${item.price} x {item.quantity}</p>
+            {(order.items || []).map((item) => {
+              const bookId = Number(item.book_id || item.id);
+              const existingReview = reviewsByBookId[bookId];
+              const draft = reviewDrafts[bookId] || { rating: 5, comment: '' };
+              const itemStatus = String(item.status || '').toLowerCase();
+              const canReviewItem = isOrderDelivered && (!itemStatus || itemStatus === 'delivered' || itemStatus === 'returned');
+
+              return (
+                <div key={item.id} className="border-b border-slate-100 pb-3 last:border-none last:pb-0">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{item.title}</p>
+                      <p className="text-sm text-slate-500">${item.price} x {item.quantity}</p>
+                    </div>
+                    <p className="font-medium">${Number(item.line_total || item.price * item.quantity).toFixed(2)}</p>
+                  </div>
+
+                  {canReviewItem ? (
+                    <div className="mt-3 grid gap-2 rounded-lg bg-slate-50 p-3">
+                      <p className="text-xs font-medium text-slate-600">Review this product</p>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-slate-600" htmlFor={`rating-${bookId}`}>Rating</label>
+                        <select
+                          id={`rating-${bookId}`}
+                          className="rounded border px-2 py-1 text-sm"
+                          value={draft.rating}
+                          onChange={(event) => onReviewDraftChange(bookId, 'rating', Number(event.target.value))}
+                        >
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <option key={star} value={star}>{star} star</option>
+                          ))}
+                        </select>
+                        {existingReview ? <span className="text-xs text-emerald-700">Updated review</span> : null}
+                      </div>
+                      <textarea
+                        className="rounded border px-2 py-1 text-sm"
+                        rows={2}
+                        placeholder="Share your experience"
+                        value={draft.comment}
+                        onChange={(event) => onReviewDraftChange(bookId, 'comment', event.target.value)}
+                      />
+                      <div>
+                        <button
+                          type="button"
+                          className="btn-primary px-3 py-1.5 text-xs"
+                          onClick={() => onSubmitReview(bookId)}
+                          disabled={submittingReviewBookId === bookId}
+                        >
+                          {submittingReviewBookId === bookId ? 'Saving...' : existingReview ? 'Update review' : 'Submit review'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-                <p className="font-medium">${Number(item.line_total || item.price * item.quantity).toFixed(2)}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

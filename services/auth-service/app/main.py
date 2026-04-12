@@ -53,7 +53,10 @@ def _apply_seed_users(seed_data: dict) -> None:
     ]
 
     if not all_entries:
+        print("[auth-service] No users found in seed data.")
         return
+
+    print(f"[auth-service] Seeding {len(all_entries)} users ({len(buyers)} buyers, {len(sellers)} sellers)...")
 
     db = SessionLocal()
     try:
@@ -109,8 +112,10 @@ def _apply_seed_users(seed_data: dict) -> None:
                 )
 
         db.commit()
-    except Exception:
+        print(f"[auth-service] ✓ {len(all_entries)} users seeded successfully.")
+    except Exception as exc:
         db.rollback()
+        print(f"[auth-service] ✗ Error seeding users: {exc}")
         raise
     finally:
         db.close()

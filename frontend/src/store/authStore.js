@@ -4,7 +4,6 @@ import { authService } from '../services/authService';
 import useCartStore from './cartStore';
 import { clearAccessToken, setAccessToken } from '../utils/token';
 
-
 function shouldLoadCart(user) {
   return String(user?.role || '').toLowerCase() === 'buyer';
 }
@@ -16,6 +15,9 @@ const useAuthStore = create(
       accessToken: null,
       isAuthenticated: false,
       isLoading: false,
+      isHydrated: false,
+
+      setHydrated: () => set({ isHydrated: true }),
 
       login: async (payload) => {
         set({ isLoading: true });
@@ -69,11 +71,19 @@ const useAuthStore = create(
       }),
       onRehydrateStorage: () => (state) => {
         const token = state?.accessToken;
+        console.log('[authStore] Rehydrating from localStorage', { 
+          hasToken: !!token, 
+          isAuthenticated: state?.isAuthenticated,
+          userRole: state?.user?.role 
+        });
         if (token) {
           setAccessToken(token);
         } else {
           clearAccessToken();
         }
+        // Mark hydration as complete
+        console.log('[authStore] Setting isHydrated to true');
+        useAuthStore.setState({ isHydrated: true });
       },
     }
   )

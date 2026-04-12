@@ -70,6 +70,9 @@ class BookResponse(BaseModel):
     price: Decimal
     stock_quantity: int
     image_url: str | None = None
+    purchase_count: int = 0
+    rating_avg: Decimal = Decimal("0")
+    rating_count: int = 0
     is_active: bool
     is_hidden: bool
     created_at: datetime | None = None
@@ -84,6 +87,15 @@ class BookDetailResponse(BookResponse):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class UpdateBookReviewStatsRequest(BaseModel):
+    rating_avg: Decimal = Field(..., ge=0, le=5)
+    rating_count: int = Field(..., ge=0)
+
+
+class IncrementBookPurchaseCountRequest(BaseModel):
+    quantity: int = Field(..., ge=1)
 
 
 class ImageUploadResponse(BaseModel):

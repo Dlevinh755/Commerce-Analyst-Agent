@@ -1,7 +1,7 @@
 import os
 import uuid
 from pathlib import Path
-from fastapi import APIRouter, Depends, Query, status, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, Query, status, HTTPException, UploadFile, File, Header
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 
@@ -16,6 +16,8 @@ from ..schemas import (
     PaginatedBooksResponse,
     MessageResponse,
     ImageUploadResponse,
+    UpdateBookReviewStatsRequest,
+    IncrementBookPurchaseCountRequest,
 )
 from ..deps import get_book_or_404, resolve_category
 from ..common.auth_jwt import require_roles
@@ -24,6 +26,7 @@ router = APIRouter(prefix="/books", tags=["Books"])
 
 UPLOADS_DIR = Path("/app/uploads")
 PUBLIC_PRODUCTS_BASE_URL = os.getenv("PUBLIC_PRODUCTS_BASE_URL", "http://localhost/api/v1/products")
+INTERNAL_SERVICE_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "")
 
 
 @router.get("", response_model=PaginatedBooksResponse)
@@ -330,3 +333,40 @@ def list_my_books(
         query = query.filter(Book.seller_id == requester_id)
 
     return query.order_by(Book.book_id.desc()).all()
+
+
+@router.patch("/internal/{book_id}/review-stats", response_model=BookResponse)
+def update_review_stats_internal(
+    book_id: int,
+    data: UpdateBookReviewStatsRequest,
+    db: Session = Depends(get_db),
+    x_internal_secret: str = Header(default=""),
+):
+    if not INTERNAL_SERVICE_SECRET or x_internal_secret != INTERNAL_SERVICE_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid internal secret")
+
+    book = get_book_or_404(db, book_id)
+    book.rating_avg = data.rating_avg
+    book.rating_count = data.rating_count
+
+    db.commit()
+    db.refresh(book)
+    return book
+
+
+@router.patch("/internal/{book_id}/purchase-count/increment", response_model=BookResponse)
+def increment_purchase_count_internal(
+    book_id: int,
+    data: IncrementBookPurchaseCountRequest,
+    db: Session = Depends(get_db),
+    x_internal_secret: str = Header(default=""),
+):
+    if not INTERNAL_SERVICE_SECRET or x_internal_secret != INTERNAL_SERVICE_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid internal secret")
+
+    book = get_book_or_404(db, book_id)
+    book.purchase_count = int(book.purchase_count or 0) + int(data.quantity)
+
+    db.commit()
+    db.refresh(book)
+    return book

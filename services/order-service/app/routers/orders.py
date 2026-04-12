@@ -1,6 +1,9 @@
 import logging
+import os
 from datetime import datetime, timezone
 from decimal import Decimal
+
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
@@ -38,6 +41,9 @@ from ..common.auth_jwt import require_roles
 router = APIRouter(prefix="/orders", tags=["Orders"])
 marketplace_router = APIRouter(tags=["Marketplace Orders"])
 logger = logging.getLogger("order-service.checkout")
+
+PRODUCT_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", "http://product-service:8001")
+INTERNAL_SERVICE_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "")
 
 
 def utc_now_naive() -> datetime:
@@ -156,10 +162,45 @@ def finalize_order_delivery(db: Session, order: Order) -> None:
         seller = seller_by_id[seller_id]
         seller.balance = Decimal(seller.balance) + amount
 
+    # Update order status to delivered
     order.status = OrderStatus.delivered
     order.delivered_at = utc_now_naive()
+    
+    # Update all order items status to delivered
+    for item in order.items:
+        if item.status != OrderItemStatus.delivered:
+            item.status = OrderItemStatus.delivered
+    
     # Kafka event published after DB commit by caller
     _order_ref_for_kafka = order
+
+
+def sync_book_purchase_counts(order: Order) -> None:
+    if not INTERNAL_SERVICE_SECRET:
+        return
+
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            for item in order.items:
+                response = client.patch(
+                    f"{PRODUCT_SERVICE_URL}/books/internal/{item.book_id}/purchase-count/increment",
+                    headers={"X-Internal-Secret": INTERNAL_SERVICE_SECRET},
+                    json={"quantity": int(item.quantity)},
+                )
+                if response.status_code >= 400:
+                    logger.warning(
+                        "purchase_count_sync.failed order_id=%s book_id=%s status=%s detail=%s",
+                        order.order_id,
+                        item.book_id,
+                        response.status_code,
+                        response.text,
+                    )
+    except Exception as exc:
+        logger.warning(
+            "purchase_count_sync.exception order_id=%s error=%s",
+            order.order_id,
+            exc,
+        )
 
 
 def serialize_order(order: Order):
@@ -504,15 +545,19 @@ def update_order_status(
     if order.status == OrderStatus.cancelled and data.status != OrderStatus.cancelled:
         raise HTTPException(status_code=400, detail="Cancelled order cannot be reactivated")
 
+    delivered_transition = False
     try:
         if data.status == OrderStatus.delivered and order.status != OrderStatus.delivered:
             payment = get_payment_for_order(db, order.order_id, lock=True)
             mark_payment_completed_on_delivery(order, payment)
             finalize_order_delivery(db, order)
+            delivered_transition = True
         else:
             order.status = data.status
         db.commit()
         db.refresh(order)
+        if delivered_transition:
+            sync_book_purchase_counts(order)
     except HTTPException:
         db.rollback()
         raise
@@ -738,6 +783,7 @@ def confirm_received_by_buyer(
         finalize_order_delivery(db, order)
         db.commit()
         db.refresh(order)
+        sync_book_purchase_counts(order)
     except HTTPException:
         db.rollback()
         raise

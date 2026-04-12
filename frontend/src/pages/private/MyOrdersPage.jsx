@@ -8,7 +8,8 @@ import Toast from '../../components/common/Toast';
 import { getErrorMessage } from '../../utils/errorMessage';
 
 export default function MyOrdersPage() {
-  const orders = useOrderStore((state) => state.orders);
+  const ordersRaw = useOrderStore((state) => state.orders);
+  const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
   const fetchOrders = useOrderStore((state) => state.fetchOrders);
   const isLoading = useOrderStore((state) => state.isLoading);
   const error = useOrderStore((state) => state.error);

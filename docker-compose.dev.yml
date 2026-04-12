@@ -1,7 +1,7 @@
 services:
   postgres-db:
     image: postgres:15-alpine
-    container_name: postgres_container
+    container_name: commerce-postgres
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -18,7 +18,7 @@ services:
 
   mongo-db:
     image: mongo:6.0
-    container_name: mongo_container
+    container_name: commerce-mongo
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS}
@@ -29,7 +29,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.4.0
-    container_name: kafka_kraft
+    container_name: commerce-kafka
     ports:
       - "${KAFKA_PORT:-9092}:9092"
     environment:
@@ -50,7 +50,7 @@ services:
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
-    container_name: kafka_ui
+    container_name: commerce-kafka-ui
     depends_on:
       - kafka
     ports:
@@ -61,7 +61,7 @@ services:
 
   databrick-mock:
     build: ./mock-databrick
-    container_name: databricks_mock
+    container_name: commerce-databricks-mock
     ports:
       - "${DATABRICKS_MOCK_PORT:-8081}:8081"
     volumes:
@@ -72,7 +72,7 @@ services:
 
   gateway:
     build: ./gateway
-    container_name: api_gateway_no_ssl
+    container_name: commerce-gateway
     restart: always
     ports:
       - "${GATEWAY_PORT}:80"
@@ -104,7 +104,7 @@ services:
 
   auth-service:
     build: ./services/auth-service
-    container_name: auth_service
+    container_name: commerce-auth-service
     restart: always
     ports:
       - "${AUTH_SERVICE_PORT:-8000}:8000"
@@ -135,7 +135,7 @@ services:
 
   product-service:
     build: ./services/product-service
-    container_name: product_service
+    container_name: commerce-product-service
     restart: always
     env_file:
       - .env
@@ -164,7 +164,7 @@ services:
 
   cart-service:
     build: ./services/cart-service
-    container_name: cart_service
+    container_name: commerce-cart-service
     restart: always
     env_file:
       - .env
@@ -182,7 +182,7 @@ services:
 
   order_service:
     build: ./services/order-service
-    container_name: order_service
+    container_name: commerce-order-service
     restart: always
     env_file:
       - .env
@@ -204,7 +204,7 @@ services:
 
   payment_service:
     build: ./services/payment-service
-    container_name: payment_service
+    container_name: commerce-payment-service
     restart: always
     env_file:
       - .env
@@ -220,7 +220,7 @@ services:
 
   review_service:
     build: ./services/review-service
-    container_name: review_service
+    container_name: commerce-review-service
     restart: always
     env_file:
       - .env
@@ -242,7 +242,7 @@ services:
 
   vnpay_service:
     build: ./services/vnpay-service
-    container_name: vnpay_service
+    container_name: commerce-vnpay-service
     restart: always
     env_file:
       - .env
@@ -264,15 +264,15 @@ services:
     build:
       context: ./frontend
       dockerfile: dockerfile
-    container_name: react_frontend
+    container_name: commerce-frontend
     ports:
       - "${FRONTEND_DOCKER_PORT:-5175}:5173"
     volumes:
       - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
+      - /app/node_modules
     environment:
       - VITE_API_BASE_URL=/api/v1
-      - VITE_DEV_PROXY_TARGET=http://api_gateway_no_ssl:80
+      - VITE_DEV_PROXY_TARGET=http://gateway:80
       - VITE_HMR_HOST=bookstore.ailab.engineer
       - VITE_HMR_PROTOCOL=wss
       - VITE_HMR_CLIENT_PORT=443
@@ -283,13 +283,13 @@ services:
     
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: cloudflared
+    container_name: commerce-cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
   
   paymenttunnel:
     image: cloudflare/cloudflared:latest
-    container_name: paymenttunnel
+    container_name: commerce-payment-tunnel
     restart: unless-stopped
     # Thay vì dùng --token, ta trỏ tới file config
     command: tunnel --config /etc/cloudflared/cloudflare-payment.yml run
@@ -298,12 +298,10 @@ services:
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARED_PAYMENT_TUNNEL_TOKEN}
       - TUNNEL_TRANSPORT_PROTOCOL=http2 # Ép sử dụng TCP để ổn định hơn UDP/QUIC
-  
 volumes:
   postgres_data:
   mongo_data:
   kafka_data:
-  frontend_node_modules:
 networks:
   commerce-network:
     driver: bridge

@@ -50,17 +50,17 @@ Probe-Url $IpnUrl
 Probe-Url "http://pay.bookstore.ailab.engineer/payment_ipn"
 
 Write-Section "2) Recent logs (last 15m)"
-$vnpRecent = Get-RecentLogs -container "vnpay_service" -pattern "payment_ipn|GET /payment_ipn|POST /api/create-payment-url" -since "15m"
-$payRecent = Get-RecentLogs -container "payment_service" -pattern "internal/vnpay-confirm|POST /payments/internal/vnpay-confirm" -since "15m"
+ $vnpRecent = Get-RecentLogs -container "commerce-vnpay-service" -pattern "payment_ipn|GET /payment_ipn|POST /api/create-payment-url" -since "15m"
+ $payRecent = Get-RecentLogs -container "commerce-payment-service" -pattern "internal/vnpay-confirm|POST /payments/internal/vnpay-confirm" -since "15m"
 
-Write-Host "vnpay_service:"
+Write-Host "commerce-vnpay-service:"
 if ($vnpRecent.Count -eq 0) {
   Write-Host "  (no matching logs)" -ForegroundColor Yellow
 } else {
   $vnpRecent | ForEach-Object { Write-Host "  $_" }
 }
 
-Write-Host "payment_service:"
+Write-Host "commerce-payment-service:"
 if ($payRecent.Count -eq 0) {
   Write-Host "  (no matching logs)" -ForegroundColor Yellow
 } else {
@@ -73,16 +73,16 @@ Write-Host "Watching for $WatchSeconds seconds..."
 
 $end = (Get-Date).AddSeconds($WatchSeconds)
 while ((Get-Date) -lt $end) {
-  $vnpNow = Get-RecentLogs -container "vnpay_service" -pattern "GET /payment_ipn|payment_ipn" -since "${PollSeconds}s"
-  $payNow = Get-RecentLogs -container "payment_service" -pattern "POST /payments/internal/vnpay-confirm|internal/vnpay-confirm" -since "${PollSeconds}s"
+  $vnpNow = Get-RecentLogs -container "commerce-vnpay-service" -pattern "GET /payment_ipn|payment_ipn" -since "${PollSeconds}s"
+  $payNow = Get-RecentLogs -container "commerce-payment-service" -pattern "POST /payments/internal/vnpay-confirm|internal/vnpay-confirm" -since "${PollSeconds}s"
 
   if ($vnpNow.Count -gt 0) {
-    Write-Host "[vnpay_service]" -ForegroundColor Green
+    Write-Host "[commerce-vnpay-service]" -ForegroundColor Green
     $vnpNow | ForEach-Object { Write-Host "  $_" }
   }
 
   if ($payNow.Count -gt 0) {
-    Write-Host "[payment_service]" -ForegroundColor Green
+    Write-Host "[commerce-payment-service]" -ForegroundColor Green
     $payNow | ForEach-Object { Write-Host "  $_" }
   }
 
@@ -90,19 +90,19 @@ while ((Get-Date) -lt $end) {
 }
 
 Write-Section "4) Final verdict"
-$vnpFinal = Get-RecentLogs -container "vnpay_service" -pattern "GET /payment_ipn|payment_ipn" -since "${WatchSeconds}s"
-$payFinal = Get-RecentLogs -container "payment_service" -pattern "POST /payments/internal/vnpay-confirm|internal/vnpay-confirm" -since "${WatchSeconds}s"
+$vnpFinal = Get-RecentLogs -container "commerce-vnpay-service" -pattern "GET /payment_ipn|payment_ipn" -since "${WatchSeconds}s"
+$payFinal = Get-RecentLogs -container "commerce-payment-service" -pattern "POST /payments/internal/vnpay-confirm|internal/vnpay-confirm" -since "${WatchSeconds}s"
 
 if ($vnpFinal.Count -eq 0) {
-  Write-Host "No IPN hit detected in vnpay_service during watch window." -ForegroundColor Red
+  Write-Host "No IPN hit detected in commerce-vnpay-service during watch window." -ForegroundColor Red
   Write-Host "=> VNPay probably did not call IPN, or callback was blocked before reaching origin."
 } else {
-  Write-Host "IPN hit detected in vnpay_service." -ForegroundColor Green
+  Write-Host "IPN hit detected in commerce-vnpay-service." -ForegroundColor Green
 }
 
 if ($payFinal.Count -eq 0) {
-  Write-Host "No internal vnpay-confirm call detected in payment_service." -ForegroundColor Yellow
-  Write-Host "=> Callback reached vnpay_service but confirmation may have failed before payment update."
+  Write-Host "No internal vnpay-confirm call detected in commerce-payment-service." -ForegroundColor Yellow
+  Write-Host "=> Callback reached commerce-vnpay-service but confirmation may have failed before payment update."
 } else {
-  Write-Host "Internal vnpay-confirm call detected in payment_service." -ForegroundColor Green
+  Write-Host "Internal vnpay-confirm call detected in commerce-payment-service." -ForegroundColor Green
 }

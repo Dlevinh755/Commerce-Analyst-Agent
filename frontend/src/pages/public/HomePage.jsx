@@ -15,10 +15,10 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchFeatured() {
       try {
-        const { data } = await bookService.list({ limit: 3 });
+        const { data } = await bookService.list({ limit: 4 });
         const raw = Array.isArray(data) ? data : data?.items || [];
         const normalized = raw.map(normalizeBook).filter((book) => book.id !== undefined);
-        setFeatured(normalized.slice(0, 3));
+        setFeatured(normalized.slice(0, 4));
       } catch {
         setFeatured([]);
       }
@@ -34,31 +34,31 @@ export default function HomePage() {
 
   return (
     <section className="space-y-8">
-      <div className="rounded-3xl bg-[radial-gradient(circle_at_top_left,_#1d6fdc,_#0f2f5f)] p-8 text-white md:p-12">
-        <h1 className="max-w-2xl text-4xl font-bold leading-tight md:text-5xl">
+      <div className="rounded-2xl bg-[radial-gradient(circle_at_15%_20%,_#3d9fc2_0,_#3f6ea8_45%,_#7b4ab8_100%)] p-7 text-white shadow-lg md:p-10">
+        <h1 className="mx-auto max-w-2xl text-center font-serif text-4xl font-bold leading-tight md:text-6xl">
           One Bookstore, many microservices, seamless shopping.
         </h1>
-        <p className="mt-4 max-w-2xl text-brand-100">
-          Discover books, manage cart, checkout, and orders in one modern storefront UI.
+        <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-slate-100 md:text-base">
+          Discover books, manage cart, checkout, and online payments in one modern storefront.
         </p>
 
-        <div className="mt-6 max-w-xl rounded-xl bg-white/10 p-2 backdrop-blur-sm">
+        <div className="mx-auto mt-6 max-w-2xl rounded-full bg-white/20 p-2 backdrop-blur-sm">
           <SearchBar
             value={searchText}
             onChange={setSearchText}
             onSubmit={onSearchSubmit}
-            placeholder="Search books, authors, topics"
+            placeholder="Search books, authors, and topics"
           />
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link
             to="/books"
-            className="btn-primary bg-white text-brand-700 hover:bg-brand-100 hover:text-brand-300"
+            className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-brand-700 transition hover:bg-slate-100"
           >
             Browse Books
           </Link>
-          <Link to="/register" className="rounded-lg border border-white/40 px-4 py-2 text-white hover:bg-white/10">
+          <Link to="/register" className="rounded-full border border-white/50 px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
             Create Account
           </Link>
         </div>
@@ -66,8 +66,8 @@ export default function HomePage() {
 
       <div>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-2xl font-semibold">Featured Books</h2>
-          <Link to="/books" className="text-sm font-medium text-brand-700">
+          <h2 className="text-3xl font-semibold text-slate-800">Featured Books</h2>
+          <Link to="/books" className="text-sm font-medium text-brand-700 hover:text-brand-500">
             View all
           </Link>
         </div>

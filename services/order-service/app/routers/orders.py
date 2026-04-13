@@ -1,6 +1,9 @@
 import logging
+import os
 from datetime import datetime, timezone
 from decimal import Decimal
+
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
@@ -11,25 +14,36 @@ from ..models import (
     CartItem,
     Order,
     OrderItem,
+    OrderItemStatus,
     OrderStatus,
     Payment,
     PaymentStatus,
+    SellerOrder,
+    SellerOrderStatus,
     User,
 )
 from ..kafka_producer import publish_order_created, publish_order_shipped, publish_order_delivered
+from ..order_status_service import recalculate_order_status
 from ..schemas import (
     CancelOrderRequest,
     CheckoutRequest,
     UpdateOrderStatusRequest,
+    UpdateOrderItemStatusRequest,
+    UpdateSellerOrderStatusRequest,
     OrderResponse,
     OrderListResponse,
     MessageResponse,
+    SellerOrderResponse,
 )
 from ..deps import get_order_or_404
 from ..common.auth_jwt import require_roles
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
+marketplace_router = APIRouter(tags=["Marketplace Orders"])
 logger = logging.getLogger("order-service.checkout")
+
+PRODUCT_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", "http://product-service:8001")
+INTERNAL_SERVICE_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "")
 
 
 def utc_now_naive() -> datetime:
@@ -148,10 +162,45 @@ def finalize_order_delivery(db: Session, order: Order) -> None:
         seller = seller_by_id[seller_id]
         seller.balance = Decimal(seller.balance) + amount
 
+    # Update order status to delivered
     order.status = OrderStatus.delivered
     order.delivered_at = utc_now_naive()
+    
+    # Update all order items status to delivered
+    for item in order.items:
+        if item.status != OrderItemStatus.delivered:
+            item.status = OrderItemStatus.delivered
+    
     # Kafka event published after DB commit by caller
     _order_ref_for_kafka = order
+
+
+def sync_book_purchase_counts(order: Order) -> None:
+    if not INTERNAL_SERVICE_SECRET:
+        return
+
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            for item in order.items:
+                response = client.patch(
+                    f"{PRODUCT_SERVICE_URL}/books/internal/{item.book_id}/purchase-count/increment",
+                    headers={"X-Internal-Secret": INTERNAL_SERVICE_SECRET},
+                    json={"quantity": int(item.quantity)},
+                )
+                if response.status_code >= 400:
+                    logger.warning(
+                        "purchase_count_sync.failed order_id=%s book_id=%s status=%s detail=%s",
+                        order.order_id,
+                        item.book_id,
+                        response.status_code,
+                        response.text,
+                    )
+    except Exception as exc:
+        logger.warning(
+            "purchase_count_sync.exception order_id=%s error=%s",
+            order.order_id,
+            exc,
+        )
 
 
 def serialize_order(order: Order):
@@ -162,13 +211,28 @@ def serialize_order(order: Order):
         items.append(
             {
                 "order_item_id": item.order_item_id,
+                "seller_order_id": item.seller_order_id,
+                "seller_id": item.seller_id,
                 "book_id": item.book_id,
                 "quantity": item.quantity,
                 "unit_price": unit_price,
+                "status": item.status,
                 "subtotal": subtotal,
                 "book": item.book,
             }
         )
+
+    seller_orders = [
+        {
+            "seller_order_id": so.seller_order_id,
+            "order_id": so.order_id,
+            "seller_id": so.seller_id,
+            "status": so.status,
+            "created_at": so.created_at,
+            "updated_at": so.updated_at,
+        }
+        for so in sorted(order.seller_orders, key=lambda s: s.seller_order_id)
+    ]
 
     return {
         "order_id": order.order_id,
@@ -185,8 +249,58 @@ def serialize_order(order: Order):
         "cancellation_requested_at": order.cancellation_requested_at,
         "cancellation_reason": order.cancellation_reason,
         "cancellation_reviewed_at": order.cancellation_reviewed_at,
+        "seller_orders": seller_orders,
         "items": items,
     }
+
+
+def map_order_status_to_child_status(order_status: OrderStatus) -> SellerOrderStatus:
+    if order_status in {OrderStatus.shipped, OrderStatus.partially_shipped}:
+        return SellerOrderStatus.shipped
+    if order_status in {OrderStatus.delivered, OrderStatus.partially_delivered}:
+        return SellerOrderStatus.delivered
+    if order_status in {OrderStatus.cancelled, OrderStatus.partially_cancelled}:
+        return SellerOrderStatus.cancelled
+    if order_status == OrderStatus.returned:
+        return SellerOrderStatus.returned
+    if order_status == OrderStatus.ready_to_ship:
+        return SellerOrderStatus.ready_to_ship
+    if order_status == OrderStatus.processing:
+        return SellerOrderStatus.processing
+    return SellerOrderStatus.pending
+
+
+def ensure_seller_orders_initialized(db: Session, order: Order) -> None:
+    if order.seller_orders and all(item.seller_order_id for item in order.items):
+        return
+
+    default_child_status = map_order_status_to_child_status(order.status)
+    seller_order_by_seller: dict[int, SellerOrder] = {
+        seller_order.seller_id: seller_order for seller_order in order.seller_orders
+    }
+
+    for item in order.items:
+        seller_id = item.seller_id or (item.book.seller_id if item.book else None)
+        if seller_id is None:
+            raise HTTPException(status_code=400, detail="Order item seller is missing")
+
+        item.seller_id = seller_id
+        if item.status is None:
+            item.status = OrderItemStatus(default_child_status.value)
+
+        seller_order = seller_order_by_seller.get(seller_id)
+        if seller_order is None:
+            seller_order = SellerOrder(
+                order_id=order.order_id,
+                seller_id=seller_id,
+                status=default_child_status,
+            )
+            db.add(seller_order)
+            db.flush()
+            seller_order_by_seller[seller_id] = seller_order
+
+        if item.seller_order_id is None:
+            item.seller_order_id = seller_order.seller_order_id
 
 
 @router.post("/checkout", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
@@ -258,13 +372,30 @@ def checkout(
         db.add(order)
         db.flush()
 
+        seller_order_by_seller: dict[int, SellerOrder] = {}
+
         for cart_item in cart_items:
             book = locked_books[cart_item.book_id]
+
+            seller_order = seller_order_by_seller.get(book.seller_id)
+            if seller_order is None:
+                seller_order = SellerOrder(
+                    order_id=order.order_id,
+                    seller_id=book.seller_id,
+                    status=SellerOrderStatus.pending,
+                )
+                db.add(seller_order)
+                db.flush()
+                seller_order_by_seller[book.seller_id] = seller_order
+
             order_item = OrderItem(
                 order_id=order.order_id,
+                seller_order_id=seller_order.seller_order_id,
+                seller_id=book.seller_id,
                 book_id=book.book_id,
                 quantity=cart_item.quantity,
                 unit_price=book.price,
+                status=OrderItemStatus.pending,
             )
             db.add(order_item)
             book.stock_quantity -= cart_item.quantity
@@ -284,7 +415,11 @@ def checkout(
 
     created_order = (
         db.query(Order)
-        .options(joinedload(Order.items).joinedload(OrderItem.book), joinedload(Order.payment))
+        .options(
+            joinedload(Order.items).joinedload(OrderItem.book),
+            joinedload(Order.seller_orders),
+            joinedload(Order.payment),
+        )
         .filter(Order.order_id == order.order_id)
         .first()
     )
@@ -410,15 +545,19 @@ def update_order_status(
     if order.status == OrderStatus.cancelled and data.status != OrderStatus.cancelled:
         raise HTTPException(status_code=400, detail="Cancelled order cannot be reactivated")
 
+    delivered_transition = False
     try:
         if data.status == OrderStatus.delivered and order.status != OrderStatus.delivered:
             payment = get_payment_for_order(db, order.order_id, lock=True)
             mark_payment_completed_on_delivery(order, payment)
             finalize_order_delivery(db, order)
+            delivered_transition = True
         else:
             order.status = data.status
         db.commit()
         db.refresh(order)
+        if delivered_transition:
+            sync_book_purchase_counts(order)
     except HTTPException:
         db.rollback()
         raise
@@ -644,6 +783,7 @@ def confirm_received_by_buyer(
         finalize_order_delivery(db, order)
         db.commit()
         db.refresh(order)
+        sync_book_purchase_counts(order)
     except HTTPException:
         db.rollback()
         raise
@@ -672,7 +812,11 @@ def mark_order_as_shipped_by_seller(
 
     order = (
         db.query(Order)
-        .options(joinedload(Order.items).joinedload(OrderItem.book), joinedload(Order.payment))
+        .options(
+            joinedload(Order.items).joinedload(OrderItem.book),
+            joinedload(Order.seller_orders),
+            joinedload(Order.payment),
+        )
         .filter(Order.order_id == order_id)
         .first()
     )
@@ -688,22 +832,32 @@ def mark_order_as_shipped_by_seller(
     if order.status == OrderStatus.shipped:
         raise HTTPException(status_code=400, detail="Order has already been marked as shipped")
 
+    ensure_seller_orders_initialized(db, order)
+
     if requester_role != "admin":
-        seller_ids = {item.book.seller_id for item in order.items}
+        seller_ids = {seller_order.seller_id for seller_order in order.seller_orders}
         if requester_id not in seller_ids:
             raise HTTPException(
                 status_code=403,
                 detail="You can only update orders containing your books",
             )
 
-        if len(seller_ids) > 1:
-            raise HTTPException(
-                status_code=400,
-                detail="This order contains books from multiple sellers and cannot be marked shipped by one seller",
-            )
-
     try:
-        order.status = OrderStatus.shipped
+        target_seller_orders = order.seller_orders
+        if requester_role != "admin":
+            target_seller_orders = [
+                seller_order for seller_order in order.seller_orders if seller_order.seller_id == requester_id
+            ]
+
+        for seller_order in target_seller_orders:
+            if seller_order.status in {SellerOrderStatus.cancelled, SellerOrderStatus.returned}:
+                continue
+            seller_order.status = SellerOrderStatus.shipped
+            for item in order.items:
+                if item.seller_order_id == seller_order.seller_order_id:
+                    item.status = OrderItemStatus.shipped
+
+        recalculate_order_status(db, order.order_id)
         db.commit()
         db.refresh(order)
     except Exception:
@@ -712,11 +866,148 @@ def mark_order_as_shipped_by_seller(
 
     order = (
         db.query(Order)
-        .options(joinedload(Order.items).joinedload(OrderItem.book))
+        .options(joinedload(Order.items).joinedload(OrderItem.book), joinedload(Order.seller_orders))
         .filter(Order.order_id == order_id)
         .first()
     )
     publish_order_shipped(order)
+    return serialize_order(order)
+
+
+@marketplace_router.patch("/seller-orders/{seller_order_id}/status", response_model=SellerOrderResponse)
+def update_seller_order_status(
+    seller_order_id: int,
+    data: UpdateSellerOrderStatusRequest,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(require_roles("seller", "admin")),
+):
+    requester_id = int(payload["sub"])
+    requester_role = payload["role"]
+
+    # Backfill legacy orders on-demand if this seller order has not been materialized yet.
+    if seller_order_id <= 0:
+        raise HTTPException(status_code=400, detail="Invalid seller order id")
+
+    seller_order = (
+        db.query(SellerOrder)
+        .filter(SellerOrder.seller_order_id == seller_order_id)
+        .with_for_update()
+        .first()
+    )
+    if not seller_order:
+        raise HTTPException(status_code=404, detail="Seller order not found")
+
+    if requester_role != "admin" and seller_order.seller_id != requester_id:
+        raise HTTPException(status_code=403, detail="You can only update your own seller orders")
+
+    if seller_order.status == data.status:
+        return seller_order
+
+    try:
+        seller_order.status = data.status
+
+        items = (
+            db.query(OrderItem)
+            .filter(OrderItem.seller_order_id == seller_order.seller_order_id)
+            .with_for_update()
+            .all()
+        )
+        for item in items:
+            item.status = OrderItemStatus(data.status.value)
+
+        recalculate_order_status(db, seller_order.order_id)
+        db.commit()
+        db.refresh(seller_order)
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to update seller order status")
+
+    return seller_order
+
+
+@marketplace_router.patch("/order-items/{order_item_id}/status", response_model=MessageResponse)
+def update_order_item_status(
+    order_item_id: int,
+    data: UpdateOrderItemStatusRequest,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(require_roles("seller", "admin")),
+):
+    requester_id = int(payload["sub"])
+    requester_role = payload["role"]
+
+    item = (
+        db.query(OrderItem)
+        .options(joinedload(OrderItem.book))
+        .filter(OrderItem.order_item_id == order_item_id)
+        .with_for_update()
+        .first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Order item not found")
+
+    seller_id = item.seller_id or (item.book.seller_id if item.book else None)
+    if seller_id is None:
+        raise HTTPException(status_code=400, detail="Order item seller is missing")
+
+    if requester_role != "admin" and requester_id != seller_id:
+        raise HTTPException(status_code=403, detail="You can only update your own order items")
+
+    try:
+        item.status = data.status
+        if item.seller_order_id:
+            sibling_items = (
+                db.query(OrderItem)
+                .filter(OrderItem.seller_order_id == item.seller_order_id)
+                .with_for_update()
+                .all()
+            )
+            if sibling_items:
+                statuses = {sibling.status for sibling in sibling_items}
+                if len(statuses) == 1:
+                    seller_order = (
+                        db.query(SellerOrder)
+                        .filter(SellerOrder.seller_order_id == item.seller_order_id)
+                        .with_for_update()
+                        .first()
+                    )
+                    if seller_order:
+                        seller_order.status = SellerOrderStatus(next(iter(statuses)).value)
+
+        recalculate_order_status(db, item.order_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to update order item status")
+
+    return {"message": "Order item status updated"}
+
+
+@marketplace_router.post("/orders/{order_id}/recalculate", response_model=OrderResponse)
+def recalculate_order_status_endpoint(
+    order_id: int,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(require_roles("admin")),
+):
+    try:
+        recalculate_order_status(db, order_id)
+        db.commit()
+    except ValueError:
+        db.rollback()
+        raise HTTPException(status_code=404, detail="Order not found")
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to recalculate order status")
+
+    order = (
+        db.query(Order)
+        .options(
+            joinedload(Order.items).joinedload(OrderItem.book),
+            joinedload(Order.seller_orders),
+            joinedload(Order.payment),
+        )
+        .filter(Order.order_id == order_id)
+        .first()
+    )
     return serialize_order(order)
 
 

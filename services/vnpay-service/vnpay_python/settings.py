@@ -131,3 +131,27 @@ VNPAY_HASH_SECRET_KEY = os.getenv('VNPAY_HASH_SECRET_KEY')
 VNPAY_IPN_URL = os.getenv('VNPAY_IPN_URL', '')
 PAYMENT_SERVICE_URL = os.getenv('PAYMENT_SERVICE_URL', 'http://payment_service:8004')
 INTERNAL_SERVICE_SECRET = os.getenv('INTERNAL_SERVICE_SECRET', '')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s %(levelname)s [%(name)s] %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard',
+            'level': 'INFO',
+        },
+    },
+    'loggers': {
+        'vnpay-service.ipn': {
+            'handlers': ['console'],
+            'level': os.getenv('VNPAY_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+    },
+}

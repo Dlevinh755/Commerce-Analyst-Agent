@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import logging
 import urllib
 import urllib.parse
 import urllib.request
@@ -15,6 +16,9 @@ from django.views.decorators.csrf import csrf_exempt
 
 from vnpay_python.forms import PaymentForm
 from vnpay_python.vnpay import vnpay
+
+
+logger = logging.getLogger("vnpay-service.ipn")
 
 
 def index(request):
@@ -58,6 +62,14 @@ def create_payment_url(request):
     if not settings.VNPAY_PAYMENT_URL or not settings.VNPAY_HASH_SECRET_KEY or not settings.VNPAY_TMN_CODE:
         return JsonResponse({'detail': 'VNPay configuration is missing'}, status=500)
 
+    logger.info(
+        "create_payment_url.request order_id=%s amount=%s return_url=%s bank_code=%s",
+        order_id,
+        amount_value,
+        return_url,
+        bank_code or "-",
+    )
+
     vnp = vnpay()
     vnp.requestData['vnp_Version'] = '2.1.0'
     vnp.requestData['vnp_Command'] = 'pay'
@@ -75,6 +87,11 @@ def create_payment_url(request):
     vnp.requestData['vnp_ReturnUrl'] = return_url
 
     payment_url = vnp.get_payment_url(settings.VNPAY_PAYMENT_URL, settings.VNPAY_HASH_SECRET_KEY)
+    logger.info(
+        "create_payment_url.success order_id=%s amount_vnd=%s",
+        order_id,
+        amount_value,
+    )
     return JsonResponse({'payment_url': payment_url})
 
 
@@ -131,12 +148,23 @@ def payment(request):
 def payment_ipn(request):
     inputData = request.GET
     if not inputData:
+        logger.warning("ipn.invalid_request empty_query")
         return JsonResponse({'RspCode': '99', 'Message': 'Invalid request'})
 
     vnp = vnpay()
     vnp.responseData = inputData.dict()
 
+    logger.info(
+        "ipn.received txn_ref=%s response_code=%s txn_status=%s txn_no=%s tmn_code=%s",
+        inputData.get('vnp_TxnRef', ''),
+        inputData.get('vnp_ResponseCode', ''),
+        inputData.get('vnp_TransactionStatus', ''),
+        inputData.get('vnp_TransactionNo', ''),
+        inputData.get('vnp_TmnCode', ''),
+    )
+
     if not vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
+        logger.warning("ipn.invalid_signature txn_ref=%s", inputData.get('vnp_TxnRef', ''))
         return JsonResponse({'RspCode': '97', 'Message': 'Invalid Signature'})
 
     vnp_ResponseCode = inputData.get('vnp_ResponseCode', '')
@@ -147,27 +175,43 @@ def payment_ipn(request):
     vnp_TmnCode = inputData.get('vnp_TmnCode', '')
 
     if vnp_TmnCode != settings.VNPAY_TMN_CODE:
+        logger.warning("ipn.invalid_tmn txn_ref=%s got=%s", order_id_raw, vnp_TmnCode)
         return JsonResponse({'RspCode': '99', 'Message': 'Invalid TmnCode'})
 
     # Failed or cancelled transactions should be acknowledged so VNPay stops retrying.
     if vnp_ResponseCode != '00' or vnp_TransactionStatus != '00':
+        logger.info(
+            "ipn.non_success_ack txn_ref=%s response_code=%s txn_status=%s",
+            order_id_raw,
+            vnp_ResponseCode,
+            vnp_TransactionStatus,
+        )
         return JsonResponse({'RspCode': '00', 'Message': 'Confirm Success'})
 
     try:
         order_id = int(order_id_raw)
     except (ValueError, TypeError):
+        logger.warning("ipn.invalid_order_id raw=%s", order_id_raw)
         return JsonResponse({'RspCode': '01', 'Message': 'Order not found'})
 
     try:
         amount = int(amount_raw)
     except (ValueError, TypeError):
+        logger.warning("ipn.invalid_amount txn_ref=%s raw=%s", order_id, amount_raw)
         return JsonResponse({'RspCode': '04', 'Message': 'Invalid amount'})
 
     internal_secret = settings.INTERNAL_SERVICE_SECRET
     if not internal_secret:
+        logger.error("ipn.misconfigured missing_internal_secret txn_ref=%s", order_id)
         return JsonResponse({'RspCode': '99', 'Message': 'Service misconfigured'})
 
     try:
+        logger.info(
+            "ipn.forward_to_payment_service txn_ref=%s amount=%s transaction_code=%s",
+            order_id,
+            amount,
+            vnp_TransactionNo,
+        )
         resp = requests.post(
             f'{settings.PAYMENT_SERVICE_URL}/payments/internal/vnpay-confirm',
             json={
@@ -178,6 +222,11 @@ def payment_ipn(request):
             headers={'X-Internal-Secret': internal_secret},
             timeout=5,
         )
+        logger.info(
+            "ipn.payment_service_response txn_ref=%s status_code=%s",
+            order_id,
+            resp.status_code,
+        )
         if resp.status_code in (200, 201):
             return JsonResponse({'RspCode': '00', 'Message': 'Confirm Success'})
         if resp.status_code == 404:
@@ -186,8 +235,18 @@ def payment_ipn(request):
             return JsonResponse({'RspCode': '02', 'Message': 'Order already updated'})
         if resp.status_code == 422:
             return JsonResponse({'RspCode': '04', 'Message': 'Invalid amount'})
+        logger.warning(
+            "ipn.payment_service_unexpected_status txn_ref=%s status_code=%s body=%s",
+            order_id,
+            resp.status_code,
+            (resp.text or '')[:300],
+        )
         return JsonResponse({'RspCode': '02', 'Message': 'Payment service error'})
+    except requests.RequestException:
+        logger.exception("ipn.payment_service_request_error txn_ref=%s", order_id)
+        return JsonResponse({'RspCode': '99', 'Message': 'Internal error'})
     except Exception:
+        logger.exception("ipn.unexpected_error txn_ref=%s", order_id)
         return JsonResponse({'RspCode': '99', 'Message': 'Internal error'})
 
 

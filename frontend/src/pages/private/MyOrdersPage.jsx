@@ -3,17 +3,20 @@ import { Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useOrderStore from '../../store/orderStore';
 import { orderService } from '../../services/orderService';
+import { vnpayService } from '../../services/vnpayService';
 import Toast from '../../components/common/Toast';
 import { getErrorMessage } from '../../utils/errorMessage';
 
 export default function MyOrdersPage() {
-  const orders = useOrderStore((state) => state.orders);
+  const ordersRaw = useOrderStore((state) => state.orders);
+  const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
   const fetchOrders = useOrderStore((state) => state.fetchOrders);
   const isLoading = useOrderStore((state) => state.isLoading);
   const error = useOrderStore((state) => state.error);
   const fetchProfile = useAuth((state) => state.fetchProfile);
   const [confirmingId, setConfirmingId] = useState(null);
   const [cancellingId, setCancellingId] = useState(null);
+  const [retryingId, setRetryingId] = useState(null);
   const [toast, setToast] = useState('');
 
   useEffect(() => {
@@ -43,6 +46,46 @@ export default function MyOrdersPage() {
       setToast(getErrorMessage(err, 'Could not update this order.'));
     } finally {
       setCancellingId(null);
+    }
+  };
+
+  const canRetryVnpay = (order) => {
+    const orderStatus = String(order?.status || '').toLowerCase();
+    const paymentStatus = String(order?.payment_status || '').toLowerCase();
+    const paymentMethod = String(order?.payment_method || '').toLowerCase();
+    const isPendingUnpaid = orderStatus === 'pending' && paymentStatus !== 'completed';
+    return isPendingUnpaid && (paymentMethod === '' || paymentMethod === 'vnpay');
+  };
+
+  const onRetryVnpay = async (order) => {
+    const orderId = Number(order?.id || order?.order_id);
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      setToast('Invalid order id for VNPay retry.');
+      return;
+    }
+
+    setRetryingId(orderId);
+    try {
+      const total = Number(order?.pricing?.total ?? order?.total ?? 0);
+      const amountVnd = Math.max(1, Math.round(total * 25000));
+
+      const { data } = await vnpayService.createPaymentUrl({
+        order_id: String(orderId),
+        amount: amountVnd,
+        order_desc: `Thanh toan don hang ${orderId}`,
+        return_url: `${window.location.origin}/checkout/vnpay-return`,
+        language: 'vn',
+      });
+
+      const paymentUrl = data?.payment_url;
+      if (!paymentUrl) {
+        throw new Error('Could not create VNPay payment URL.');
+      }
+
+      window.location.href = paymentUrl;
+    } catch (err) {
+      setToast(getErrorMessage(err, 'Could not start VNPay payment again.'));
+      setRetryingId(null);
     }
   };
 
@@ -125,6 +168,17 @@ export default function MyOrdersPage() {
                     : String(order.status).toLowerCase() === 'shipped'
                       ? 'Request cancel'
                       : 'Cancel order'}
+                </button>
+              ) : null}
+
+              {canRetryVnpay(order) ? (
+                <button
+                  type="button"
+                  className="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-medium text-brand-700"
+                  onClick={() => onRetryVnpay(order)}
+                  disabled={retryingId === order.id}
+                >
+                  {retryingId === order.id ? 'Redirecting...' : 'Thanh toan lai'}
                 </button>
               ) : null}
             </div>

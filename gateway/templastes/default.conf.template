@@ -85,6 +85,24 @@ server {
         proxy_pass $payment_upstream;
     }
 
+    # Điều hướng Review Service (FastAPI)
+    # Client gọi: /api/v1/reviews/... → review-service nhận: /reviews/...
+    location /api/v1/reviews {
+        set $review_upstream http://${REVIEW_SERVICE_HOST}:${REVIEW_SERVICE_PORT};
+        rewrite ^/api/v1/reviews$ /reviews break;
+        rewrite ^/api/v1/reviews/(.*)$ /reviews/$1 break;
+        proxy_pass $review_upstream;
+    }
+
+    # Điều hướng callback IPN VNPay về endpoint gốc của Django.
+    location = /api/v1/vnpay/payment_ipn {
+        set $vnpay_upstream http://${VNPAY_SERVICE_HOST}:${VNPAY_SERVICE_PORT};
+        rewrite ^/api/v1/vnpay/payment_ipn$ /payment_ipn break;
+        # Override Host to a clean RFC-compliant value — Django rejects hostnames with underscores.
+        proxy_set_header Host localhost;
+        proxy_pass $vnpay_upstream;
+    }
+
     # Điều hướng VNPay Service (Django)
     # Client gọi: /api/v1/vnpay/... → vnpay-service nhận: /api/...
     location /api/v1/vnpay/ {

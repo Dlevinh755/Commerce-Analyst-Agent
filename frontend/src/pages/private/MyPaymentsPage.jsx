@@ -9,7 +9,8 @@ function paymentBadge(status) {
 }
 
 export default function MyPaymentsPage() {
-  const payments = useOrderStore((state) => state.payments);
+  const paymentsRaw = useOrderStore((state) => state.payments);
+  const payments = Array.isArray(paymentsRaw) ? paymentsRaw : [];
   const fetchPayments = useOrderStore((state) => state.fetchPayments);
   const isLoading = useOrderStore((state) => state.isLoading);
   const error = useOrderStore((state) => state.error);

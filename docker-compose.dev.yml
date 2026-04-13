@@ -9,9 +9,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT:-5432}:5432" 
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -66,7 +66,7 @@ services:
       - "${DATABRICKS_MOCK_PORT:-8081}:8081"
     volumes:
       - .:/app
-      - ./data:/app/data 
+      - ./data:/app/data
     environment:
       - PYTHONUNBUFFERED=1
 
@@ -121,14 +121,14 @@ services:
     volumes:
       - ./dev-seeds.json:/app/dev-seeds.json:ro
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
     depends_on:
       postgres-db:
-          condition: service_healthy
+        condition: service_healthy
     networks:
       - default
       - commerce-network
@@ -156,7 +156,7 @@ services:
       postgres-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/books?page=1&page_size=1')"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/books?page=1&page_size=1')" ]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -233,8 +233,13 @@ services:
       - ORDER_SERVICE_URL=http://order_service:8003
       - PRODUCT_SERVICE_URL=http://product-service:8001
       - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-me-internal-secret}
+      - DEV_AUTO_SEED=true
+      - DEV_SEED_FILE=/app/dev-seeds.json
+      - AUTH_SERVICE_URL=http://commerce-auth-service:8000
     ports:
       - "${REVIEW_SERVICE_PORT:-8006}:8006"
+    volumes:
+      - ./dev-seeds.json:/app/dev-seeds.json:ro
     depends_on:
       - mongo-db
       - order_service
@@ -280,13 +285,13 @@ services:
       - gateway
     networks:
       - default
-    
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: commerce-cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
-  
+
   paymenttunnel:
     image: cloudflare/cloudflared:latest
     container_name: commerce-payment-tunnel

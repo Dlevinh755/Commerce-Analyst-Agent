@@ -100,24 +100,27 @@ export default function BookListPage() {
 
   return (
     <section className="space-y-6">
-      <div className="rounded-2xl bg-gradient-to-r from-brand-700 to-brand-500 p-6 text-white">
-        <h1 className="text-3xl font-bold">Discover your next great read</h1>
-        <p className="mt-2 text-brand-100">
+      <div className="relative overflow-hidden rounded-2xl bg-[linear-gradient(120deg,_rgba(16,38,68,0.88),_rgba(16,38,68,0.75)),radial-gradient(circle_at_10%_20%,_#1f8ca8,_transparent_40%),radial-gradient(circle_at_90%_20%,_#c7a86a,_transparent_30%),linear-gradient(140deg,_#0d3b66,_#1f4a72_45%,_#254f7b)] p-6 text-white shadow-md md:p-8">
+        <div className="relative z-10 max-w-3xl">
+          <h1 className="text-3xl font-bold md:text-4xl">Discover your next great read</h1>
+          <p className="mt-2 text-slate-100">
           Browse titles from multiple services with a clean storefront experience.
-        </p>
-        <div className="mt-5 max-w-2xl rounded-xl bg-white/10 p-2 backdrop-blur-sm">
-          <SearchBar
-            value={searchText}
-            onChange={setSearchText}
-            onSubmit={onSearchSubmit}
-            placeholder="Search by title, author, or keyword"
-          />
+          </p>
+          <div className="mt-5 max-w-2xl rounded-2xl border border-slate-200/80 bg-slate-100/90 p-2 shadow-sm backdrop-blur-sm">
+            <SearchBar
+              value={searchText}
+              onChange={setSearchText}
+              onSubmit={onSearchSubmit}
+              placeholder="Search by title, author, or keyword"
+            />
+          </div>
         </div>
+        <div className="pointer-events-none absolute -bottom-16 -right-10 h-44 w-44 rounded-full bg-cyan-300/20 blur-2xl" />
       </div>
 
       {error ? <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">{error}</div> : null}
 
-      <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
+      <div className="grid gap-5 lg:grid-cols-[240px_1fr]">
         <FilterPanel
           categories={categories}
           selectedCategory={selectedCategory}

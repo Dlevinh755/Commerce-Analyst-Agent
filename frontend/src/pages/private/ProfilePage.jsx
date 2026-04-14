@@ -9,7 +9,6 @@ import { getErrorMessage } from '../../utils/errorMessage';
 export default function ProfilePage() {
   const user = useAuth((state) => state.user);
   const fetchProfile = useAuth((state) => state.fetchProfile);
-  const logout = useAuth((state) => state.logout);
   const orders = useOrderStore((state) => state.orders);
   const payments = useOrderStore((state) => state.payments);
   const [accountNumber, setAccountNumber] = useState('');
@@ -19,6 +18,30 @@ export default function ProfilePage() {
   const canUpdateAccountNumber = useMemo(
     () => user?.role === 'buyer' || user?.role === 'seller',
     [user?.role]
+  );
+  const roleLabel = useMemo(() => {
+    const role = (user?.role || '').toLowerCase();
+    if (role === 'admin') return 'Admin';
+    if (role === 'seller') return 'Seller';
+    if (role === 'buyer') return 'Buyer';
+    return 'Member';
+  }, [user?.role]);
+  const roleClassName = useMemo(() => {
+    const role = (user?.role || '').toLowerCase();
+    if (role === 'admin') return 'bg-amber-100 text-amber-700 ring-1 ring-amber-200';
+    if (role === 'seller') return 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200';
+    return 'bg-brand-100 text-brand-700 ring-1 ring-brand-200';
+  }, [user?.role]);
+  const displayName = useMemo(() => user?.full_name?.trim() || user?.username || 'User', [user?.full_name, user?.username]);
+  const initials = useMemo(
+    () =>
+      displayName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() || '')
+        .join('') || 'U',
+    [displayName]
   );
 
   useEffect(() => {
@@ -50,51 +73,66 @@ export default function ProfilePage() {
   }
 
   return (
-    <section className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">My Profile</h1>
-        <button type="button" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={logout}>
-          Logout
-        </button>
+    <section className="space-y-6">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-r from-brand-50 via-white to-slate-50 p-4 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="grid h-16 w-16 place-items-center rounded-2xl bg-white text-xl font-bold text-brand-700 shadow-sm ring-1 ring-brand-100 sm:h-20 sm:w-20 sm:text-2xl">
+              {initials}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">My Profile</h1>
+              <p className="mt-1 text-sm text-slate-600">{displayName}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${roleClassName}`}>{roleLabel}</span>
+                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">{user.email}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="card md:col-span-2">
-          <h2 className="text-lg font-semibold">Account Information</h2>
-          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-slate-500">Username</dt>
-              <dd className="font-medium">{user.username}</dd>
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
+          <article className="card p-0">
+            <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+              <h2 className="text-lg font-semibold text-slate-900">Account Details</h2>
+              <p className="mt-1 text-sm text-slate-500">Basic account information and payment settings.</p>
             </div>
-            <div>
-              <dt className="text-slate-500">Full Name</dt>
-              <dd className="font-medium">{user.full_name}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Email</dt>
-              <dd className="font-medium">{user.email}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Role</dt>
-              <dd className="font-medium capitalize">{user.role}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Account Number</dt>
-              <dd className="font-medium">{user.account_number || '-'}</dd>
-            </div>
-            <div>
-              <dt className="text-slate-500">Current Balance</dt>
-              <dd className="font-medium">${Number(user.balance || 0).toFixed(2)}</dd>
-            </div>
-          </dl>
+
+            <dl className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Username</dt>
+                <dd className="mt-1 text-sm font-semibold text-slate-900">{user.username}</dd>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</dt>
+                <dd className="mt-1 text-sm font-semibold text-slate-900">{displayName}</dd>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:col-span-2">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</dt>
+                <dd className="mt-1 text-sm font-semibold text-slate-900">{user.email}</dd>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Account Number</dt>
+                <dd className="mt-1 text-sm font-semibold text-slate-900">{user.account_number || '-'}</dd>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current Balance</dt>
+                <dd className="mt-1 text-2xl font-bold leading-none text-slate-900">${Number(user.balance || 0).toFixed(2)}</dd>
+              </div>
+            </dl>
+          </article>
 
           {canUpdateAccountNumber ? (
-            <form className="mt-5 rounded-lg border border-slate-200 p-4" onSubmit={onSubmitAccountNumber}>
-              <p className="text-sm font-medium">Update Account Number</p>
-              <p className="mt-1 text-xs text-slate-500">
+            <form className="card space-y-3" onSubmit={onSubmitAccountNumber}>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Update Account Number</p>
+                <p className="mt-1 text-xs text-slate-500">
                 This account number is used for payment settlement on delivered orders.
-              </p>
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   className="input"
                   placeholder="Enter account number"
@@ -102,7 +140,7 @@ export default function ProfilePage() {
                   onChange={(event) => setAccountNumber(event.target.value)}
                   required
                 />
-                <button type="submit" className="btn-primary sm:w-auto" disabled={savingAccount}>
+                <button type="submit" className="btn-primary min-h-10 sm:w-auto" disabled={savingAccount}>
                   {savingAccount ? 'Saving...' : 'Save'}
                 </button>
               </div>
@@ -110,17 +148,41 @@ export default function ProfilePage() {
           ) : null}
         </div>
 
-        <div className="card">
-          <h2 className="text-lg font-semibold">Quick Overview</h2>
-          <p className="mt-4 text-sm text-slate-600">Orders: <span className="font-semibold">{orders.length}</span></p>
-          <p className="mt-1 text-sm text-slate-600">Payments: <span className="font-semibold">{payments.length}</span></p>
-          <div className="mt-4 space-y-2">
-            <Link className="block rounded-md border border-slate-300 px-3 py-2 text-sm" to="/orders">
-              View orders
-            </Link>
-            <Link className="block rounded-md border border-slate-300 px-3 py-2 text-sm" to="/payments">
-              View payments
-            </Link>
+        <div className="space-y-5">
+          <aside className="card">
+            <h2 className="text-lg font-semibold text-slate-900">Overview</h2>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Orders</p>
+                <p className="mt-2 text-2xl font-bold leading-none text-slate-900">{orders.length}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Payments</p>
+                <p className="mt-2 text-2xl font-bold leading-none text-slate-900">{payments.length}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              <Link
+                className="block rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                to="/orders"
+              >
+                View orders
+              </Link>
+              <Link
+                className="block rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                to="/payments"
+              >
+                View payments
+              </Link>
+            </div>
+          </aside>
+
+          <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4">
+            <p className="text-sm font-semibold text-brand-700">Account Security</p>
+            <p className="mt-1 text-xs text-brand-700/90">
+              Keep your account number accurate to ensure payouts are processed correctly.
+            </p>
           </div>
         </div>
       </div>

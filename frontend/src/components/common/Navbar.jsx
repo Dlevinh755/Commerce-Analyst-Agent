@@ -1,4 +1,4 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useCart from '../../hooks/useCart';
 import { getDefaultRouteByRole, normalizeRole } from '../../utils/role';
@@ -26,6 +26,7 @@ function NavItem({ to, children, badge, icon, className }) {
 }
 
 export default function Navbar() {
+  const navigate = useNavigate();
   const isAuthenticated = useAuth((state) => state.isAuthenticated);
   const logout = useAuth((state) => state.logout);
   const user = useAuth((state) => state.user);
@@ -33,10 +34,18 @@ export default function Navbar() {
   const role = normalizeRole(user?.role);
   const dashboardPath = getDefaultRouteByRole(role);
 
+  const onLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate('/login', { replace: true });
+    }
+  };
+
   return (
     <header className="border-b border-slate-200/80 bg-white/95 backdrop-blur">
       <div className="container-page flex min-h-16 flex-col gap-2 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:py-0">
-        <Link to="/" className="font-serif text-3xl font-bold leading-none text-slate-800 sm:text-4xl">
+        <Link to="/" className="text-3xl font-bold leading-none text-slate-800 sm:text-4xl">
           Bookstore
         </Link>
 
@@ -187,7 +196,7 @@ export default function Navbar() {
               </NavItem>
               <button
                 type="button"
-                onClick={logout}
+                onClick={onLogout}
                 className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
               >
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">

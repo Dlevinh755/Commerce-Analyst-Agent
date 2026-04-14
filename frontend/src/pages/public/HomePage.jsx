@@ -35,7 +35,7 @@ export default function HomePage() {
   return (
     <section className="space-y-8">
       <div className="rounded-2xl bg-[radial-gradient(circle_at_15%_20%,_#3d9fc2_0,_#3f6ea8_45%,_#7b4ab8_100%)] p-7 text-white shadow-lg md:p-10">
-        <h1 className="mx-auto max-w-2xl text-center font-serif text-4xl font-bold leading-tight md:text-6xl">
+        <h1 className="mx-auto max-w-2xl text-center text-4xl font-bold leading-tight md:text-6xl">
           One Bookstore, many microservices, seamless shopping.
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-slate-100 md:text-base">

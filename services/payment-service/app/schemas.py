@@ -55,3 +55,9 @@ class PaymentListResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class InternalVnpayConfirmRequest(BaseModel):
+    order_id: int
+    amount: int = Field(..., ge=1)
+    transaction_code: str | None = Field(default=None, max_length=100)

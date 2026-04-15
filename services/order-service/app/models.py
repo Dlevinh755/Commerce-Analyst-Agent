@@ -20,9 +20,34 @@ from .db import Base
 class OrderStatus(str, enum.Enum):
     pending = "pending"
     processing = "processing"
+    ready_to_ship = "ready_to_ship"
+    shipped = "shipped"
+    partially_shipped = "partially_shipped"
+    delivered = "delivered"
+    partially_delivered = "partially_delivered"
+    cancelled = "cancelled"
+    partially_cancelled = "partially_cancelled"
+    returned = "returned"
+
+
+class SellerOrderStatus(str, enum.Enum):
+    pending = "pending"
+    processing = "processing"
+    ready_to_ship = "ready_to_ship"
     shipped = "shipped"
     delivered = "delivered"
     cancelled = "cancelled"
+    returned = "returned"
+
+
+class OrderItemStatus(str, enum.Enum):
+    pending = "pending"
+    processing = "processing"
+    ready_to_ship = "ready_to_ship"
+    shipped = "shipped"
+    delivered = "delivered"
+    cancelled = "cancelled"
+    returned = "returned"
 
 
 class PaymentStatus(str, enum.Enum):
@@ -93,6 +118,7 @@ class Order(Base):
     cancellation_reviewed_at = Column(DateTime, nullable=True)
 
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    seller_orders = relationship("SellerOrder", back_populates="order", cascade="all, delete-orphan")
     payment = relationship("Payment", back_populates="order", uselist=False)
 
     __table_args__ = (
@@ -128,16 +154,46 @@ class OrderItem(Base):
 
     order_item_id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.order_id", ondelete="CASCADE"), nullable=False, index=True)
+    seller_order_id = Column(Integer, ForeignKey("seller_orders.seller_order_id", ondelete="SET NULL"), nullable=True, index=True)
+    seller_id = Column(Integer, nullable=True, index=True)
     book_id = Column(Integer, ForeignKey("books.book_id", ondelete="RESTRICT"), nullable=False, index=True)
     quantity = Column(Integer, nullable=False)
     unit_price = Column(Numeric(10, 2), nullable=False)
+    status = Column(
+        Enum(OrderItemStatus, name="order_item_status"),
+        nullable=False,
+        default=OrderItemStatus.pending,
+    )
 
     order = relationship("Order", back_populates="items")
+    seller_order = relationship("SellerOrder", back_populates="items")
     book = relationship("Book", back_populates="order_items")
 
     __table_args__ = (
         CheckConstraint("quantity > 0", name="check_order_item_quantity_positive"),
         CheckConstraint("unit_price >= 0", name="check_order_item_unit_price_non_negative"),
+    )
+
+
+class SellerOrder(Base):
+    __tablename__ = "seller_orders"
+
+    seller_order_id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.order_id", ondelete="CASCADE"), nullable=False, index=True)
+    seller_id = Column(Integer, nullable=False, index=True)
+    status = Column(
+        Enum(SellerOrderStatus, name="seller_order_status"),
+        nullable=False,
+        default=SellerOrderStatus.pending,
+    )
+    created_at = Column(DateTime, server_default=func.current_timestamp())
+    updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+
+    order = relationship("Order", back_populates="seller_orders")
+    items = relationship("OrderItem", back_populates="seller_order")
+
+    __table_args__ = (
+        UniqueConstraint("order_id", "seller_id", name="uq_seller_order_order_seller"),
     )
 
 

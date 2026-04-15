@@ -3,14 +3,16 @@ import { Link } from 'react-router-dom';
 import useCart from '../../hooks/useCart';
 
 export default function CartPage() {
-  const items = useCart((state) => state.items);
+  const itemsRaw = useCart((state) => state.items);
+  const items = Array.isArray(itemsRaw) ? itemsRaw : [];
   const isLoading = useCart((state) => state.isLoading);
   const error = useCart((state) => state.error);
   const fetchCart = useCart((state) => state.fetchCart);
   const removeItem = useCart((state) => state.removeItem);
   const updateQuantity = useCart((state) => state.updateQuantity);
   const clearCart = useCart((state) => state.clearCart);
-  const totalAmount = useCart((state) => state.totalAmount());
+  const totalAmountFn = useCart((state) => state.totalAmount);
+  const totalAmount = totalAmountFn ? totalAmountFn() : 0;
 
   useEffect(() => {
     fetchCart();

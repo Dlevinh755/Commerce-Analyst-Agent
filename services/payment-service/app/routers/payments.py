@@ -1,6 +1,7 @@
 import os
+import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
 
 from ..db import get_db
@@ -12,11 +13,16 @@ from ..schemas import (
     PaymentResponse,
     PaymentListResponse,
     MessageResponse,
+    InternalVnpayConfirmRequest,
 )
 from ..deps import get_order_or_404, get_payment_or_404
 from ..common.auth_jwt import require_roles
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
+
+logger = logging.getLogger("payment-service.vnpay")
+
+INTERNAL_SERVICE_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "")
 
 
 def _is_simulation_enabled() -> bool:
@@ -359,5 +365,94 @@ def simulate_payment_failed(
         .options(joinedload(Payment.order))
         .filter(Payment.payment_id == payment.payment_id)
         .first()
+    )
+    return serialize_payment(payment)
+
+
+@router.post("/internal/vnpay-confirm", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
+def internal_vnpay_confirm(
+    data: InternalVnpayConfirmRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Server-to-server endpoint called by vnpay-service IPN handler to confirm payment."""
+    secret = request.headers.get("X-Internal-Secret", "")
+    logger.info(
+        "internal_vnpay_confirm.received order_id=%s amount=%s transaction_code=%s client=%s",
+        data.order_id,
+        data.amount,
+        data.transaction_code or "",
+        getattr(request.client, "host", "unknown"),
+    )
+    if not INTERNAL_SERVICE_SECRET or secret != INTERNAL_SERVICE_SECRET:
+        logger.warning(
+            "internal_vnpay_confirm.forbidden order_id=%s reason=secret_mismatch",
+            data.order_id,
+        )
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    order = (
+        db.query(Order)
+        .options(joinedload(Order.payment))
+        .filter(Order.order_id == data.order_id)
+        .first()
+    )
+    if not order:
+        logger.warning("internal_vnpay_confirm.order_not_found order_id=%s", data.order_id)
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.payment:
+        if order.payment.payment_status == PaymentStatus.completed:
+            logger.info(
+                "internal_vnpay_confirm.already_completed order_id=%s payment_id=%s",
+                data.order_id,
+                order.payment.payment_id,
+            )
+            return serialize_payment(order.payment)
+        logger.warning(
+            "internal_vnpay_confirm.conflict_existing_payment order_id=%s payment_status=%s",
+            data.order_id,
+            order.payment.payment_status,
+        )
+        raise HTTPException(status_code=409, detail="Payment already exists for this order")
+
+    if order.status == OrderStatus.cancelled:
+        logger.warning("internal_vnpay_confirm.order_cancelled order_id=%s", data.order_id)
+        raise HTTPException(status_code=409, detail="Cancelled order cannot be paid")
+
+    expected_amount = max(1, int(round(float(order.total_amount) * 25000))) * 100
+    if data.amount != expected_amount:
+        logger.warning(
+            "internal_vnpay_confirm.invalid_amount order_id=%s expected=%s got=%s",
+            data.order_id,
+            expected_amount,
+            data.amount,
+        )
+        raise HTTPException(status_code=422, detail="Invalid amount")
+
+    payment = Payment(
+        order_id=order.order_id,
+        payment_method="VNPAY",
+        payment_status=PaymentStatus.completed,
+        amount=order.total_amount,
+        transaction_code=(data.transaction_code or None),
+    )
+    db.add(payment)
+    apply_order_status_from_payment(order, PaymentStatus.completed)
+    db.commit()
+    db.refresh(payment)
+
+    payment = (
+        db.query(Payment)
+        .options(joinedload(Payment.order))
+        .filter(Payment.payment_id == payment.payment_id)
+        .first()
+    )
+    logger.info(
+        "internal_vnpay_confirm.success order_id=%s payment_id=%s status=%s transaction_code=%s",
+        data.order_id,
+        payment.payment_id,
+        payment.payment_status,
+        payment.transaction_code or "",
     )
     return serialize_payment(payment)

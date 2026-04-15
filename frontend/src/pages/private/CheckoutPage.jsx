@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useCart from '../../hooks/useCart';
 import useAuth from '../../hooks/useAuth';
@@ -15,7 +15,8 @@ const devLog = (...args) => {
 };
 
 export default function CheckoutPage() {
-  const items = useCart((state) => state.items);
+  const itemsRaw = useCart((state) => state.items);
+  const items = Array.isArray(itemsRaw) ? itemsRaw : [];
   const fetchCart = useCart((state) => state.fetchCart);
   const totalAmount = useCart((state) => state.totalAmount());
   const clearCart = useCart((state) => state.clearCart);
@@ -30,6 +31,9 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [notes, setNotes] = useState('');
   const [localError, setLocalError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLockedRef = useRef(false);
+  const redirectingRef = useRef(false);
 
   useEffect(() => {
     devLog('mount:fetchCart');
@@ -38,8 +42,15 @@ export default function CheckoutPage() {
 
   const submitCheckout = async (event) => {
     event.preventDefault();
+
+    if (submitLockedRef.current) {
+      devLog('submit:blocked-duplicate');
+      return;
+    }
+
     setLocalError('');
     clearError();
+    redirectingRef.current = false;
 
     devLog('submit:start', {
       itemCount: items.length,
@@ -63,13 +74,33 @@ export default function CheckoutPage() {
       return;
     }
 
+    submitLockedRef.current = true;
+    setIsSubmitting(true);
+
     try {
       if (paymentMethod === 'VNPAY') {
-        const checkoutRef = `VNPAY-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        // Pre-create the order so the server-side IPN can confirm payment directly
+        const order = await createOrderFromCart({
+          user,
+          cartItems: items,
+          shippingAddress: shippingAddress.trim(),
+          paymentMethod: 'VNPAY',
+          notes: notes.trim(),
+        });
+
+        const orderId = order.order_id ?? order.id;
+        const numericOrderId = Number(orderId);
+        devLog('submit:vnpay-order-created', { orderId, numericOrderId });
+        if (!orderId || Number.isNaN(numericOrderId) || !Number.isInteger(numericOrderId)) {
+          throw new Error('Could not determine order id before VNPay redirect.');
+        }
+
+        const total = Number(order.pricing?.total ?? order.total_amount ?? totalAmount ?? 0);
+
         sessionStorage.setItem(
           PENDING_VNPAY_CHECKOUT_KEY,
           JSON.stringify({
-            checkoutRef,
+            createdOrderId: numericOrderId,
             shippingAddress: shippingAddress.trim(),
             notes: notes.trim(),
             requestedAt: new Date().toISOString(),
@@ -77,20 +108,20 @@ export default function CheckoutPage() {
         );
 
         const { data } = await vnpayService.createPaymentUrl({
-          order_id: checkoutRef,
-          amount: Math.max(1, Math.round(totalAmount * 25000)),
-          order_desc: `Thanh toan don hang ${checkoutRef}`,
+          order_id: String(numericOrderId),
+          amount: Math.max(1, Math.round((total || totalAmount) * 25000)),
+          order_desc: `Thanh toan don hang ${numericOrderId}`,
           return_url: `${window.location.origin}/checkout/vnpay-return`,
           language: 'vn',
         });
 
         const paymentUrl = data?.payment_url;
         if (!paymentUrl) {
-          sessionStorage.removeItem(PENDING_VNPAY_CHECKOUT_KEY);
           throw new Error('Could not create VNPay payment URL.');
         }
 
-        devLog('submit:vnpay-redirect', { checkoutRef, hasPaymentUrl: Boolean(paymentUrl) });
+        devLog('submit:vnpay-redirect', { orderId: numericOrderId, hasPaymentUrl: Boolean(paymentUrl) });
+        redirectingRef.current = true;
         window.location.href = paymentUrl;
         return;
       }
@@ -124,6 +155,11 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error(CHECKOUT_LOG_PREFIX, 'submit:error', error?.response?.status, error?.response?.data || error?.message);
       setLocalError(error?.response?.data?.detail || error?.message || 'Checkout failed.');
+    } finally {
+      if (!redirectingRef.current) {
+        submitLockedRef.current = false;
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -199,8 +235,8 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <button type="submit" className="btn-primary mt-4 w-full" disabled={isLoading}>
-            {isLoading ? 'Processing...' : paymentMethod === 'VNPAY' ? 'Pay with VNPay' : 'Place Order'}
+          <button type="submit" className="btn-primary mt-4 w-full" disabled={isLoading || isSubmitting}>
+            {isLoading || isSubmitting ? 'Processing...' : paymentMethod === 'VNPAY' ? 'Pay with VNPay' : 'Place Order'}
           </button>
         </aside>
       </form>

@@ -43,8 +43,9 @@ export default function BookCard({ book, onUnauthorized, onAddedToCart }) {
         <p className="text-xs text-slate-500">Sold by {book.sellerDisplay}</p>
         <div className="flex items-center justify-between pt-2">
           <p className="font-bold text-brand-700">${book.price}</p>
-          <p className="text-sm text-amber-500">★ {book.rating.toFixed(1)}</p>
+          <p className="text-sm text-amber-500">★ {Number(book.rating || 0).toFixed(1)} ({book.ratingCount || 0})</p>
         </div>
+        <p className="text-xs text-slate-500">Purchased: {book.purchaseCount || 0}</p>
         <div className="pt-3 flex gap-2">
           <Link to={`/books/${book.id}`} className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-medium">
             View

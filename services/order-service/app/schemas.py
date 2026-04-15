@@ -1,7 +1,13 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from pydantic import BaseModel, Field
-from .models import CancellationStatus, OrderStatus, PaymentStatus
+from .models import (
+    CancellationStatus,
+    OrderItemStatus,
+    OrderStatus,
+    PaymentStatus,
+    SellerOrderStatus,
+)
 
 
 class CheckoutRequest(BaseModel):
@@ -14,6 +20,14 @@ class CancelOrderRequest(BaseModel):
 
 class UpdateOrderStatusRequest(BaseModel):
     status: OrderStatus
+
+
+class UpdateSellerOrderStatusRequest(BaseModel):
+    status: SellerOrderStatus
+
+
+class UpdateOrderItemStatusRequest(BaseModel):
+    status: OrderItemStatus
 
 
 class OrderBookInfo(BaseModel):
@@ -29,9 +43,12 @@ class OrderBookInfo(BaseModel):
 
 class OrderItemResponse(BaseModel):
     order_item_id: int
+    seller_order_id: int | None = None
+    seller_id: int | None = None
     book_id: int
     quantity: int
     unit_price: Decimal
+    status: OrderItemStatus
     subtotal: Decimal
     book: OrderBookInfo
 
@@ -54,6 +71,7 @@ class OrderResponse(BaseModel):
     cancellation_requested_at: datetime | None = None
     cancellation_reason: str | None = None
     cancellation_reviewed_at: datetime | None = None
+    seller_orders: list["SellerOrderResponse"] = []
     items: list[OrderItemResponse]
 
     class Config:
@@ -69,3 +87,18 @@ class OrderListResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class SellerOrderResponse(BaseModel):
+    seller_order_id: int
+    order_id: int
+    seller_id: int
+    status: SellerOrderStatus
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+OrderResponse.model_rebuild()

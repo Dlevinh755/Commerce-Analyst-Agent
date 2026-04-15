@@ -2,7 +2,15 @@ from fastapi import FastAPI
 from sqlalchemy import text
 from .db import Base, engine, SessionLocal
 from .routers import orders
-from .models import CancellationStatus, Order, OrderItem, OrderStatus
+from .models import (
+    CancellationStatus,
+    Order,
+    OrderItem,
+    OrderItemStatus,
+    OrderStatus,
+    SellerOrder,
+    SellerOrderStatus,
+)
 import os
 import json
 from datetime import datetime, timezone
@@ -24,6 +32,53 @@ except Exception as _kafka_err:
 
 Base.metadata.create_all(bind=engine)
 with engine.begin() as connection:
+    connection.execute(text("ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'ready_to_ship'"))
+    connection.execute(text("ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'partially_shipped'"))
+    connection.execute(text("ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'partially_delivered'"))
+    connection.execute(text("ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'partially_cancelled'"))
+    connection.execute(text("ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'returned'"))
+    connection.execute(
+        text(
+            """
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'seller_order_status') THEN
+                    CREATE TYPE seller_order_status AS ENUM (
+                        'pending',
+                        'processing',
+                        'ready_to_ship',
+                        'shipped',
+                        'delivered',
+                        'cancelled',
+                        'returned'
+                    );
+                END IF;
+            END
+            $$;
+            """
+        )
+    )
+    connection.execute(
+        text(
+            """
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_item_status') THEN
+                    CREATE TYPE order_item_status AS ENUM (
+                        'pending',
+                        'processing',
+                        'ready_to_ship',
+                        'shipped',
+                        'delivered',
+                        'cancelled',
+                        'returned'
+                    );
+                END IF;
+            END
+            $$;
+            """
+        )
+    )
     connection.execute(
         text("ALTER TABLE users ADD COLUMN IF NOT EXISTS account_number VARCHAR(50)")
     )
@@ -53,8 +108,101 @@ with engine.begin() as connection:
         ),
         {"status": CancellationStatus.none.value},
     )
+    connection.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS seller_orders (
+                seller_order_id SERIAL PRIMARY KEY,
+                order_id INTEGER NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
+                seller_id INTEGER NOT NULL,
+                status seller_order_status NOT NULL DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT uq_seller_order_order_seller UNIQUE (order_id, seller_id)
+            )
+            """
+        )
+    )
+    connection.execute(
+        text("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS seller_order_id INTEGER NULL")
+    )
+    connection.execute(
+        text("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS seller_id INTEGER NULL")
+    )
+    connection.execute(
+        text(
+            "ALTER TABLE order_items ADD COLUMN IF NOT EXISTS status order_item_status NOT NULL DEFAULT 'pending'"
+        )
+    )
+    connection.execute(
+        text(
+            """
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = 'fk_order_items_seller_order_id'
+                ) THEN
+                    ALTER TABLE order_items
+                    ADD CONSTRAINT fk_order_items_seller_order_id
+                    FOREIGN KEY (seller_order_id)
+                    REFERENCES seller_orders(seller_order_id)
+                    ON DELETE SET NULL;
+                END IF;
+            END
+            $$;
+            """
+        )
+    )
+    connection.execute(
+        text(
+            """
+            INSERT INTO seller_orders (order_id, seller_id, status)
+            SELECT
+                oi.order_id,
+                COALESCE(oi.seller_id, b.seller_id) AS seller_id,
+                CASE
+                    WHEN o.status = 'shipped' THEN 'shipped'::seller_order_status
+                    WHEN o.status = 'delivered' THEN 'delivered'::seller_order_status
+                    WHEN o.status = 'cancelled' THEN 'cancelled'::seller_order_status
+                    WHEN o.status = 'processing' THEN 'processing'::seller_order_status
+                    ELSE 'pending'::seller_order_status
+                END AS status
+            FROM order_items oi
+            JOIN books b ON b.book_id = oi.book_id
+            JOIN orders o ON o.order_id = oi.order_id
+            WHERE COALESCE(oi.seller_id, b.seller_id) IS NOT NULL
+            GROUP BY oi.order_id, COALESCE(oi.seller_id, b.seller_id), o.status
+            ON CONFLICT (order_id, seller_id) DO NOTHING
+            """
+        )
+    )
+    connection.execute(
+        text(
+            """
+            UPDATE order_items oi
+            SET seller_id = b.seller_id
+            FROM books b
+            WHERE oi.book_id = b.book_id AND oi.seller_id IS NULL
+            """
+        )
+    )
+    connection.execute(
+        text(
+            """
+            UPDATE order_items oi
+            SET seller_order_id = so.seller_order_id
+            FROM seller_orders so
+            WHERE so.order_id = oi.order_id
+              AND so.seller_id = oi.seller_id
+              AND oi.seller_order_id IS NULL
+            """
+        )
+    )
 
 app.include_router(orders.router)
+app.include_router(orders.marketplace_router)
 
 
 def _is_dev_seed_enabled() -> bool:
@@ -97,8 +245,10 @@ def _parse_seed_datetime(value) -> datetime | None:
 def _apply_seed_orders(seed_data: dict) -> None:
     seed_orders = seed_data.get("orders")
     if not isinstance(seed_orders, list) or not seed_orders:
+        print("[order-service] No orders found in seed data.")
         return
 
+    print(f"[order-service] Seeding {len(seed_orders)} orders...")
     db = SessionLocal()
     try:
         for entry in seed_orders:
@@ -137,7 +287,7 @@ def _apply_seed_orders(seed_data: dict) -> None:
                 book_row = db.execute(
                     text(
                         """
-                        SELECT b.book_id, b.price, b.stock_quantity
+                        SELECT b.book_id, b.price, b.stock_quantity, b.seller_id
                         FROM books b
                         JOIN users u ON b.seller_id = u.user_id
                         WHERE u.username = :seller AND b.title = :title
@@ -155,6 +305,7 @@ def _apply_seed_orders(seed_data: dict) -> None:
                     "book_id": book_row["book_id"],
                     "unit_price": Decimal(str(book_row["price"])),
                     "quantity": quantity,
+                    "seller_id": book_row["seller_id"],
                 })
 
             if not resolved_items:
@@ -219,12 +370,42 @@ def _apply_seed_orders(seed_data: dict) -> None:
             db.add(order)
             db.flush()
 
+            seller_status = {
+                OrderStatus.pending: SellerOrderStatus.pending,
+                OrderStatus.processing: SellerOrderStatus.processing,
+                OrderStatus.ready_to_ship: SellerOrderStatus.ready_to_ship,
+                OrderStatus.shipped: SellerOrderStatus.shipped,
+                OrderStatus.partially_shipped: SellerOrderStatus.shipped,
+                OrderStatus.delivered: SellerOrderStatus.delivered,
+                OrderStatus.partially_delivered: SellerOrderStatus.delivered,
+                OrderStatus.cancelled: SellerOrderStatus.cancelled,
+                OrderStatus.partially_cancelled: SellerOrderStatus.cancelled,
+                OrderStatus.returned: SellerOrderStatus.returned,
+            }.get(status_val, SellerOrderStatus.pending)
+
+            item_status = OrderItemStatus(seller_status.value)
+            seller_order_by_seller: dict[int, SellerOrder] = {}
+
             for item in resolved_items:
+                seller_order = seller_order_by_seller.get(item["seller_id"])
+                if seller_order is None:
+                    seller_order = SellerOrder(
+                        order_id=order.order_id,
+                        seller_id=item["seller_id"],
+                        status=seller_status,
+                    )
+                    db.add(seller_order)
+                    db.flush()
+                    seller_order_by_seller[item["seller_id"]] = seller_order
+
                 db.add(OrderItem(
                     order_id=order.order_id,
+                    seller_order_id=seller_order.seller_order_id,
+                    seller_id=item["seller_id"],
                     book_id=item["book_id"],
                     quantity=item["quantity"],
                     unit_price=item["unit_price"],
+                    status=item_status,
                 ))
 
         db.commit()

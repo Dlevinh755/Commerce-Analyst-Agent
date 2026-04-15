@@ -29,7 +29,7 @@ SECRET_KEY = '*bzwzl9d&aq)rg2z9(@twit_)=5fp77et3i&l4-xp1h$r)^+gp'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # Application definition
 
@@ -127,3 +127,31 @@ VNPAY_PAYMENT_URL = os.getenv('VNPAY_PAYMENT_URL')
 VNPAY_API_URL = os.getenv('VNPAY_API_URL')
 VNPAY_TMN_CODE = os.getenv('VNPAY_TMN_CODE')
 VNPAY_HASH_SECRET_KEY = os.getenv('VNPAY_HASH_SECRET_KEY')
+# IPN / Internal service config
+VNPAY_IPN_URL = os.getenv('VNPAY_IPN_URL', '')
+PAYMENT_SERVICE_URL = os.getenv('PAYMENT_SERVICE_URL', 'http://payment_service:8004')
+INTERNAL_SERVICE_SECRET = os.getenv('INTERNAL_SERVICE_SECRET', '')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s %(levelname)s [%(name)s] %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard',
+            'level': 'INFO',
+        },
+    },
+    'loggers': {
+        'vnpay-service.ipn': {
+            'handlers': ['console'],
+            'level': os.getenv('VNPAY_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+    },
+}

@@ -1,0 +1,23 @@
+VNPay sandbox test
+
+Created at: 2026-03-16 11:01:59
+Buyer username: buyer_vnpay_727278
+Buyer password: Buyer@123
+Order ID: 15
+Book ID: 2
+Amount (VND): 800000
+
+Sandbox card details
+Bank: NCB
+Card number: 9704198526191432198
+Card holder: NGUYEN VAN A
+Issue date: 07/15
+OTP: 123456
+
+Payment URL
+https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_Amount=80000000&vnp_Command=pay&vnp_CreateDate=20260316110159&vnp_CurrCode=VND&vnp_IpAddr=172.18.0.14&vnp_Locale=vn&vnp_OrderInfo=Thanh+toan+don+hang+15&vnp_OrderType=other&vnp_ReturnUrl=https%3A%2F%2Fbookstore.ailab.engineer%2Fcheckout%2Fvnpay-return&vnp_TmnCode=ONU4TMSW&vnp_TxnRef=15&vnp_Version=2.1.0&vnp_SecureHash=9718091aa4fade07b85b31ec743aef47f7b5f7c8a258b23f141c62b0af6195914e4df3d2095d7182e6bae8f26062e4fd56cd72198466214b9c656737bff5a184
+
+Notes
+- This payment URL is temporary and may expire.
+- If it expires, generate a new test payment URL with the same sandbox card details.
+- Current app logic for VNPay IPN is working internally, but HTTPS on pay.bookstore.ailab.engineer still needs TLS fixing for real external IPN callbacks.

@@ -5,6 +5,7 @@ import useOrderStore from '../../store/orderStore';
 import Toast from '../../components/common/Toast';
 import { authService } from '../../services/authService';
 import { getErrorMessage } from '../../utils/errorMessage';
+import { formatCurrencyVND } from '../../utils/currency';
 
 export default function ProfilePage() {
   const user = useAuth((state) => state.user);
@@ -21,10 +22,10 @@ export default function ProfilePage() {
   );
   const roleLabel = useMemo(() => {
     const role = (user?.role || '').toLowerCase();
-    if (role === 'admin') return 'Admin';
-    if (role === 'seller') return 'Seller';
-    if (role === 'buyer') return 'Buyer';
-    return 'Member';
+    if (role === 'admin') return 'Quản trị viên';
+    if (role === 'seller') return 'Người bán';
+    if (role === 'buyer') return 'Người mua';
+    return 'Thành viên';
   }, [user?.role]);
   const roleClassName = useMemo(() => {
     const role = (user?.role || '').toLowerCase();
@@ -60,16 +61,16 @@ export default function ProfilePage() {
     try {
       await authService.updateMyAccountNumber({ account_number: accountNumber.trim() });
       await fetchProfile();
-      setToast('Account number updated successfully.');
+      setToast('Cập nhật số tài khoản thành công.');
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not update account number.'));
+      setToast(getErrorMessage(err, 'Không thể cập nhật số tài khoản.'));
     } finally {
       setSavingAccount(false);
     }
   };
 
   if (!user) {
-    return <div className="card">Loading profile...</div>;
+    return <div className="card">Đang tải hồ sơ...</div>;
   }
 
   return (
@@ -81,7 +82,7 @@ export default function ProfilePage() {
               {initials}
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">My Profile</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Hồ sơ của tôi</h1>
               <p className="mt-1 text-sm text-slate-600">{displayName}</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${roleClassName}`}>{roleLabel}</span>
@@ -96,17 +97,17 @@ export default function ProfilePage() {
         <div className="space-y-5 lg:col-span-2">
           <article className="card p-0">
             <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
-              <h2 className="text-lg font-semibold text-slate-900">Account Details</h2>
-              <p className="mt-1 text-sm text-slate-500">Basic account information and payment settings.</p>
+              <h2 className="text-lg font-semibold text-slate-900">Thông tin tài khoản</h2>
+              <p className="mt-1 text-sm text-slate-500">Thông tin cơ bản và cài đặt thanh toán.</p>
             </div>
 
             <dl className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Username</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tên đăng nhập</dt>
                 <dd className="mt-1 text-sm font-semibold text-slate-900">{user.username}</dd>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Họ tên</dt>
                 <dd className="mt-1 text-sm font-semibold text-slate-900">{displayName}</dd>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:col-span-2">
@@ -114,12 +115,12 @@ export default function ProfilePage() {
                 <dd className="mt-1 text-sm font-semibold text-slate-900">{user.email}</dd>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Account Number</dt>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Số tài khoản</dt>
                 <dd className="mt-1 text-sm font-semibold text-slate-900">{user.account_number || '-'}</dd>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current Balance</dt>
-                <dd className="mt-1 text-2xl font-bold leading-none text-slate-900">${Number(user.balance || 0).toFixed(2)}</dd>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Số dư hiện tại</dt>
+                <dd className="mt-1 text-2xl font-bold leading-none text-slate-900">{formatCurrencyVND(user.balance)}</dd>
               </div>
             </dl>
           </article>
@@ -127,21 +128,21 @@ export default function ProfilePage() {
           {canUpdateAccountNumber ? (
             <form className="card space-y-3" onSubmit={onSubmitAccountNumber}>
               <div>
-                <p className="text-sm font-semibold text-slate-900">Update Account Number</p>
+                <p className="text-sm font-semibold text-slate-900">Cập nhật số tài khoản</p>
                 <p className="mt-1 text-xs text-slate-500">
-                This account number is used for payment settlement on delivered orders.
+                Số tài khoản này dùng để đối soát thanh toán cho các đơn đã giao.
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   className="input"
-                  placeholder="Enter account number"
+                  placeholder="Nhập số tài khoản"
                   value={accountNumber}
                   onChange={(event) => setAccountNumber(event.target.value)}
                   required
                 />
                 <button type="submit" className="btn-primary min-h-10 sm:w-auto" disabled={savingAccount}>
-                  {savingAccount ? 'Saving...' : 'Save'}
+                  {savingAccount ? 'Đang lưu...' : 'Lưu'}
                 </button>
               </div>
             </form>
@@ -150,14 +151,14 @@ export default function ProfilePage() {
 
         <div className="space-y-5">
           <aside className="card">
-            <h2 className="text-lg font-semibold text-slate-900">Overview</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Tổng quan</h2>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Orders</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Đơn hàng</p>
                 <p className="mt-2 text-2xl font-bold leading-none text-slate-900">{orders.length}</p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Payments</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Thanh toán</p>
                 <p className="mt-2 text-2xl font-bold leading-none text-slate-900">{payments.length}</p>
               </div>
             </div>
@@ -167,21 +168,21 @@ export default function ProfilePage() {
                 className="block rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
                 to="/orders"
               >
-                View orders
+                Xem đơn hàng
               </Link>
               <Link
                 className="block rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
                 to="/payments"
               >
-                View payments
+                Xem thanh toán
               </Link>
             </div>
           </aside>
 
           <div className="rounded-2xl border border-brand-100 bg-brand-50/70 p-4">
-            <p className="text-sm font-semibold text-brand-700">Account Security</p>
+            <p className="text-sm font-semibold text-brand-700">Bảo mật tài khoản</p>
             <p className="mt-1 text-xs text-brand-700/90">
-              Keep your account number accurate to ensure payouts are processed correctly.
+              Hãy giữ số tài khoản chính xác để đảm bảo đối soát và thanh toán đúng.
             </p>
           </div>
         </div>

@@ -8,7 +8,7 @@ export default function ProtectedRoute() {
 
   // If user is already authenticated in memory, let route render immediately.
   if (!isHydrated && !isAuthenticated) {
-    return <div className="container-page py-6 text-sm text-slate-500">Loading session...</div>;
+    return <div className="container-page py-6 text-sm text-slate-500">Đang tải phiên đăng nhập...</div>;
   }
 
   if (!isAuthenticated) {

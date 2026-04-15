@@ -5,7 +5,7 @@ export const paymentService = {
   create: (payload) => {
     const normalizedOrderId = Number(payload?.order_id);
     if (!Number.isInteger(normalizedOrderId) || normalizedOrderId <= 0) {
-      throw new Error('Invalid order id for payment creation.');
+      throw new Error('Mã đơn hàng không hợp lệ để tạo thanh toán.');
     }
 
     return api.post('/payments', {

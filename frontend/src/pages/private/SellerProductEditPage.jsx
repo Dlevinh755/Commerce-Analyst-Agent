@@ -21,7 +21,7 @@ export default function SellerProductEditPage() {
         const { data } = await sellerProductService.detail(id);
         setProduct(data);
       } catch (err) {
-        setError(getErrorMessage(err, 'Could not load product detail.'));
+        setError(getErrorMessage(err, 'Không thể tải chi tiết sản phẩm.'));
       } finally {
         setLoading(false);
       }
@@ -36,7 +36,7 @@ export default function SellerProductEditPage() {
       await sellerProductService.update(id, payload);
       navigate('/seller/products', {
         replace: true,
-        state: { message: 'Product updated successfully.' },
+        state: { message: 'Cập nhật sản phẩm thành công.' },
       });
     } finally {
       setSubmitting(false);
@@ -44,15 +44,15 @@ export default function SellerProductEditPage() {
   };
 
   if (loading) {
-    return <section className="card">Loading product...</section>;
+    return <section className="card">Đang tải sản phẩm...</section>;
   }
 
   if (error || !product) {
     return (
       <section className="space-y-4">
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error || 'Product not found.'}</div>
+        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error || 'Không tìm thấy sản phẩm.'}</div>
         <Link to="/seller/products" className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          Back to products
+          Quay lại danh sách sản phẩm
         </Link>
       </section>
     );
@@ -62,18 +62,18 @@ export default function SellerProductEditPage() {
     <section className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Edit Product</h1>
-          <p className="mt-1 text-slate-600">Update your product information.</p>
+          <h1 className="text-2xl font-semibold">Chỉnh sửa sản phẩm</h1>
+          <p className="mt-1 text-slate-600">Cập nhật thông tin sản phẩm của bạn.</p>
         </div>
         <Link to="/seller/products" className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          Back to products
+          Quay lại danh sách sản phẩm
         </Link>
       </div>
 
       <div className="card">
         <SellerProductForm
           initialValues={product}
-          submitText="Save Changes"
+          submitText="Lưu thay đổi"
           onSubmit={handleUpdate}
           submitting={submitting}
         />

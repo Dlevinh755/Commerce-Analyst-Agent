@@ -3,15 +3,16 @@ import { orderService } from '../../services/orderService';
 import { getErrorMessage } from '../../utils/errorMessage';
 import Toast from '../../components/common/Toast';
 import useAuth from '../../hooks/useAuth';
+import { formatCurrencyVND } from '../../utils/currency';
 
 const DATE_FILTERS = [
-  { value: 'all', label: 'Date Range' },
-  { value: '7', label: 'Last 7 days' },
-  { value: '30', label: 'Last 30 days' },
+  { value: 'all', label: 'Khoảng thời gian' },
+  { value: '7', label: '7 ngày gần đây' },
+  { value: '30', label: '30 ngày gần đây' },
 ];
 
 function formatCurrency(value) {
-  return `$${Number(value || 0).toFixed(2)}`;
+  return formatCurrencyVND(value);
 }
 
 function formatDate(value) {
@@ -23,6 +24,21 @@ function formatDate(value) {
 
 function normalizeStatus(value) {
   return String(value || '').toLowerCase();
+}
+
+function formatOrderStatus(status) {
+  const normalized = normalizeStatus(status);
+  const labels = {
+    pending: 'Cho xu ly',
+    processing: 'Dang xu ly',
+    ready_to_ship: 'San sang giao',
+    shipped: 'Da gui',
+    delivered: 'Da giao',
+    completed: 'Hoan tat',
+    cancelled: 'Da huy',
+    canceled: 'Da huy',
+  };
+  return labels[normalized] || normalized || 'Khong xac dinh';
 }
 
 function getStatusBadgeClass(status) {
@@ -62,7 +78,7 @@ export default function OrdersPage() {
       const { data } = await orderService.listForSeller({ page: 1, page_size: 100 });
       setOrders(Array.isArray(data?.items) ? data.items : []);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not load seller orders.'));
+      setError(getErrorMessage(err, 'Không thể tải đơn hàng của người bán.'));
     } finally {
       setLoading(false);
     }
@@ -79,9 +95,9 @@ export default function OrdersPage() {
       setOrders((prev) =>
         prev.map((item) => (item.order_id === orderId ? { ...item, ...data } : item))
       );
-      setToast(`Order #${orderId} marked as shipped.`);
+      setToast(`Đơn hàng #${orderId} đã được đánh dấu đã gửi.`);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not update order status.'));
+      setToast(getErrorMessage(err, 'Không thể cập nhật trạng thái đơn hàng.'));
     } finally {
       setShippingOrderId(null);
     }
@@ -92,9 +108,9 @@ export default function OrdersPage() {
     try {
       const { data } = await orderService.approveCancellation(orderId);
       setOrders((prev) => prev.map((item) => (item.order_id === orderId ? { ...item, ...data } : item)));
-      setToast(`Cancellation approved for order #${orderId}.`);
+      setToast(`Đã duyệt hủy đơn hàng #${orderId}.`);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not approve cancellation request.'));
+      setToast(getErrorMessage(err, 'Không thể duyệt yêu cầu hủy đơn.'));
     } finally {
       setReviewingOrderId(null);
     }
@@ -105,9 +121,9 @@ export default function OrdersPage() {
     try {
       const { data } = await orderService.rejectCancellation(orderId);
       setOrders((prev) => prev.map((item) => (item.order_id === orderId ? { ...item, ...data } : item)));
-      setToast(`Cancellation rejected for order #${orderId}.`);
+      setToast(`Đã từ chối hủy đơn hàng #${orderId}.`);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not reject cancellation request.'));
+      setToast(getErrorMessage(err, 'Không thể từ chối yêu cầu hủy đơn.'));
     } finally {
       setReviewingOrderId(null);
     }
@@ -187,11 +203,11 @@ export default function OrdersPage() {
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Seller Orders</h1>
-          <p className="mt-1 text-slate-600">Set order status to shipped when package leaves your warehouse.</p>
+          <h1 className="text-2xl font-semibold">Đơn hàng người bán</h1>
+          <p className="mt-1 text-slate-600">Đánh dấu đã gửi khi đơn hàng rời kho của bạn.</p>
         </div>
         <button type="button" className="rounded-lg border px-3 py-1.5 text-sm" onClick={loadOrders}>
-          Refresh
+          Làm mới
         </button>
       </div>
 
@@ -204,7 +220,7 @@ export default function OrdersPage() {
             </svg>
           </div>
           <div>
-            <p className="text-xs font-medium text-slate-500">Pending Orders</p>
+            <p className="text-xs font-medium text-slate-500">Đơn chờ xử lý</p>
             <p className="text-lg font-semibold text-slate-900">{summaryCounts.pending}</p>
           </div>
         </div>
@@ -217,7 +233,7 @@ export default function OrdersPage() {
             </svg>
           </div>
           <div>
-            <p className="text-xs font-medium text-slate-500">Shipped Orders</p>
+            <p className="text-xs font-medium text-slate-500">Đơn đã gửi</p>
             <p className="text-lg font-semibold text-slate-900">{summaryCounts.shipped}</p>
           </div>
         </div>
@@ -228,7 +244,7 @@ export default function OrdersPage() {
             </svg>
           </div>
           <div>
-            <p className="text-xs font-medium text-slate-500">Delivered Orders</p>
+            <p className="text-xs font-medium text-slate-500">Đơn đã giao</p>
             <p className="text-lg font-semibold text-slate-900">{summaryCounts.delivered}</p>
           </div>
         </div>
@@ -245,7 +261,7 @@ export default function OrdersPage() {
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               className="w-full bg-transparent text-sm text-slate-700 outline-none"
-              placeholder="Search Order ID or Buyer Name"
+              placeholder="Tìm mã đơn hoặc tên người mua"
             />
           </div>
           <select
@@ -253,12 +269,12 @@ export default function OrdersPage() {
             onChange={(event) => setStatusFilter(event.target.value)}
             className="h-9 w-44 shrink-0 rounded-lg border border-slate-300 px-3 text-slate-900 outline-none focus:ring-2 focus:ring-brand-500"
           >
-            <option value="">Order Status</option>
-            <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="shipped">Shipped</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="">Trạng thái đơn</option>
+            <option value="pending">Chờ xử lý</option>
+            <option value="processing">Đang xử lý</option>
+            <option value="shipped">Đã gửi</option>
+            <option value="delivered">Đã giao</option>
+            <option value="cancelled">Đã hủy</option>
           </select>
           <select
             value={dateFilter}
@@ -276,9 +292,9 @@ export default function OrdersPage() {
         {error ? <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
         {loading ? (
-          <div className="card mt-3">Loading orders...</div>
+          <div className="card mt-3">Đang tải đơn hàng...</div>
         ) : filteredOrders.length === 0 ? (
-          <div className="card mt-3 text-slate-600">No orders found for your books.</div>
+          <div className="card mt-3 text-slate-600">Không tìm thấy đơn hàng nào cho sách của bạn.</div>
         ) : (
           <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -287,13 +303,13 @@ export default function OrdersPage() {
                   <th className="w-10 px-3 py-3 text-left font-medium">
                     <input type="checkbox" className="h-4 w-4 rounded border-slate-300" />
                   </th>
-                  <th className="px-3 py-3 text-left font-medium">Order ID</th>
-                  <th className="px-3 py-3 text-left font-medium">Buyer (Name)</th>
-                  <th className="px-3 py-3 text-left font-medium">Date (Full)</th>
-                  <th className="px-3 py-3 text-left font-medium">Total Amount</th>
-                  <th className="px-3 py-3 text-left font-medium">Order Status</th>
-                  <th className="px-3 py-3 text-left font-medium">Items Status</th>
-                  <th className="px-3 py-3 text-right font-medium">Actions</th>
+                  <th className="px-3 py-3 text-left font-medium">Mã đơn</th>
+                  <th className="px-3 py-3 text-left font-medium">Người mua</th>
+                  <th className="px-3 py-3 text-left font-medium">Ngày đặt</th>
+                  <th className="px-3 py-3 text-left font-medium">Tổng tiền</th>
+                  <th className="px-3 py-3 text-left font-medium">Trạng thái đơn</th>
+                  <th className="px-3 py-3 text-left font-medium">Trạng thái mặt hàng</th>
+                  <th className="px-3 py-3 text-right font-medium">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -324,12 +340,12 @@ export default function OrdersPage() {
                       <td className="px-3 py-3">{formatCurrency(order.total_amount)}</td>
                       <td className="px-3 py-3">
                         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
-                          {order.status || 'pending'}
+                          {formatOrderStatus(order.status || 'pending')}
                         </span>
                       </td>
                       <td className="px-3 py-3">
                         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(mySellerStatus)}`}>
-                          {mySellerStatus || 'n/a'}{showPendingCount ? ` (${pendingItemCount})` : ''}
+                          {formatOrderStatus(mySellerStatus || 'khong_xac_dinh')}{showPendingCount ? ` (${pendingItemCount})` : ''}
                         </span>
                       </td>
                       <td className="px-3 py-3 text-right">
@@ -341,7 +357,7 @@ export default function OrdersPage() {
                               onClick={() => onApproveCancellation(order.order_id)}
                               disabled={reviewingOrderId === order.order_id}
                             >
-                              {reviewingOrderId === order.order_id ? 'Updating...' : 'Approve cancel'}
+                              {reviewingOrderId === order.order_id ? 'Đang cập nhật...' : 'Duyệt hủy'}
                             </button>
                             <button
                               type="button"
@@ -349,7 +365,7 @@ export default function OrdersPage() {
                               onClick={() => onRejectCancellation(order.order_id)}
                               disabled={reviewingOrderId === order.order_id}
                             >
-                              {reviewingOrderId === order.order_id ? 'Updating...' : 'Reject'}
+                              {reviewingOrderId === order.order_id ? 'Đang cập nhật...' : 'Từ chối'}
                             </button>
                           </div>
                         ) : canMarkShipped ? (
@@ -359,7 +375,7 @@ export default function OrdersPage() {
                             onClick={() => onMarkShipped(order.order_id)}
                             disabled={shippingOrderId === order.order_id}
                           >
-                            {shippingOrderId === order.order_id ? 'Updating...' : 'Mark as shipped'}
+                            {shippingOrderId === order.order_id ? 'Đang cập nhật...' : 'Đánh dấu đã gửi'}
                           </button>
                         ) : (
                           <span className="text-xs text-slate-400">-</span>

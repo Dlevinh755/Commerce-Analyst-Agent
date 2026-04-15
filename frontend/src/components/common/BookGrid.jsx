@@ -4,7 +4,7 @@ export default function BookGrid({ books, onUnauthorized, onAddedToCart }) {
   if (!books.length) {
     return (
       <div className="card text-center text-slate-500">
-        No books found. Try another keyword or filter.
+        Không tìm thấy sách. Hãy thử từ khóa hoặc bộ lọc khác.
       </div>
     );
   }

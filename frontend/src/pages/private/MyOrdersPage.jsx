@@ -8,12 +8,13 @@ import { bookService } from '../../services/bookService';
 import Toast from '../../components/common/Toast';
 import { getErrorMessage } from '../../utils/errorMessage';
 import { normalizeBook } from '../../utils/bookMapper';
+import { formatCurrencyVND } from '../../utils/currency';
 
 const FALLBACK_COVER =
   'https://images.unsplash.com/photo-1526243741027-444d633d7365?auto=format&fit=crop&w=300&q=80';
 
 function formatCurrency(value) {
-  return `$${Number(value || 0).toFixed(2)}`;
+  return formatCurrencyVND(value);
 }
 
 function formatPaymentMethod(method) {
@@ -28,6 +29,21 @@ function formatPaymentMethod(method) {
     return 'VNPay';
   }
   return String(method);
+}
+
+function formatOrderStatus(status) {
+  const normalized = String(status || '').toLowerCase();
+  const labels = {
+    pending: 'Chờ xử lý',
+    processing: 'Đang xử lý',
+    pending_payment: 'Chờ thanh toán',
+    shipped: 'Đã gửi',
+    delivered: 'Đã giao',
+    completed: 'Hoàn tất',
+    cancelled: 'Đã hủy',
+    canceled: 'Đã hủy',
+  };
+  return labels[normalized] || normalized || 'Khong xac dinh';
 }
 
 function getStatusBadgeClass(status) {
@@ -48,13 +64,13 @@ function getStatusBadgeClass(status) {
 }
 
 function BookThumb({ item, fallbackCover }) {
-  const fallbackText = String(item?.title || 'Book').slice(0, 2).toUpperCase();
+  const fallbackText = String(item?.title || 'Sach').slice(0, 2).toUpperCase();
   const coverSrc = item?.cover || fallbackCover;
   if (coverSrc) {
     return (
       <img
         src={coverSrc}
-        alt={item.title || 'Book'}
+        alt={item.title || 'Sach'}
         className="h-16 w-10 rounded object-cover"
         onError={(event) => {
           event.currentTarget.src = FALLBACK_COVER;
@@ -144,9 +160,9 @@ export default function MyOrdersPage() {
     try {
       await orderService.confirmReceived(orderId);
       await fetchOrders();
-      setToast(`Order #${orderId} marked as delivered.`);
+      setToast(`Đơn hàng #${orderId} đã được đánh dấu là đã giao.`);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not confirm this order.'));
+      setToast(getErrorMessage(err, 'Không thể xác nhận đơn hàng này.'));
     } finally {
       setConfirmingId(null);
     }
@@ -157,9 +173,9 @@ export default function MyOrdersPage() {
     try {
       const { data } = await orderService.cancel(order.id);
       await Promise.all([fetchOrders(), fetchProfile().catch(() => null)]);
-      setToast(data?.message || `Order #${order.id} updated.`);
+      setToast(data?.message || `Đơn hàng #${order.id} đã được cập nhật.`);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not update this order.'));
+      setToast(getErrorMessage(err, 'Không thể cập nhật đơn hàng này.'));
     } finally {
       setCancellingId(null);
     }
@@ -176,7 +192,7 @@ export default function MyOrdersPage() {
   const onRetryVnpay = async (order) => {
     const orderId = Number(order?.id || order?.order_id);
     if (!Number.isInteger(orderId) || orderId <= 0) {
-      setToast('Invalid order id for VNPay retry.');
+      setToast('Mã đơn hàng không hợp lệ để thanh toán lại VNPay.');
       return;
     }
 
@@ -195,12 +211,12 @@ export default function MyOrdersPage() {
 
       const paymentUrl = data?.payment_url;
       if (!paymentUrl) {
-        throw new Error('Could not create VNPay payment URL.');
+        throw new Error('Không thể tạo URL thanh toán VNPay.');
       }
 
       window.location.href = paymentUrl;
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not start VNPay payment again.'));
+      setToast(getErrorMessage(err, 'Không thể bắt đầu thanh toán VNPay lại.'));
       setRetryingId(null);
     }
   };
@@ -209,20 +225,20 @@ export default function MyOrdersPage() {
     <section className="space-y-4">
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
-          <h1 className="text-3xl font-semibold text-slate-900">My Orders</h1>
+          <h1 className="text-3xl font-semibold text-slate-900">Đơn hàng của tôi</h1>
           <Link to="/books" className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">
-            Continue shopping
+            Tiếp tục mua sắm
           </Link>
         </div>
 
-        {isLoading ? <div className="card">Loading orders...</div> : null}
+        {isLoading ? <div className="card">Đang tải đơn hàng...</div> : null}
         {error ? <div className="card text-red-600">{error}</div> : null}
 
         {!isLoading && !orders.length ? (
           <div className="card text-center">
-            <p className="text-slate-600">No orders yet.</p>
+            <p className="text-slate-600">Bạn chưa có đơn hàng nào.</p>
             <Link to="/books" className="btn-primary mt-4 inline-block">
-              Buy your first book
+              Mua cuốn sách đầu tiên
             </Link>
           </div>
         ) : null}
@@ -250,7 +266,7 @@ export default function MyOrdersPage() {
                       : null}
                     {remainingItems > 0 ? (
                       <span className="absolute -bottom-1 right-0 rounded bg-brand-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                        +{remainingItems} items
+                        +{remainingItems} sản phẩm
                       </span>
                     ) : null}
                   </div>
@@ -258,21 +274,21 @@ export default function MyOrdersPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <p className="text-lg font-semibold text-slate-900">Order #{order.id}</p>
+                        <p className="text-lg font-semibold text-slate-900">Đơn hàng #{order.id}</p>
                         <p className="text-xs text-slate-500">
-                          {order.created_at ? new Date(order.created_at).toLocaleString() : '-'} • {order.items?.length || 0} items
+                          {order.created_at ? new Date(order.created_at).toLocaleString() : '-'} • {order.items?.length || 0} sản phẩm
                         </p>
                       </div>
                       <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
-                        {String(order.status || 'unknown').toLowerCase()}
+                        {formatOrderStatus(order.status)}
                       </span>
                     </div>
 
-                    <p className="mt-1 text-sm font-medium text-slate-700">Total: {formatCurrency(total)}</p>
-                    <p className="text-sm text-slate-600">Payment method: {formatPaymentMethod(order.payment_method)}</p>
+                    <p className="mt-1 text-sm font-medium text-slate-700">Tổng tiền: {formatCurrency(total)}</p>
+                    <p className="text-sm text-slate-600">Phương thức thanh toán: {formatPaymentMethod(order.payment_method)}</p>
 
                     {cancellationPending ? (
-                      <p className="mt-1 text-xs font-medium text-amber-700">Cancellation request pending seller approval.</p>
+                      <p className="mt-1 text-xs font-medium text-amber-700">Yêu cầu hủy đang chờ người bán duyệt.</p>
                     ) : null}
 
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
@@ -284,7 +300,7 @@ export default function MyOrdersPage() {
                             onClick={() => onConfirmReceived(order.id)}
                             disabled={confirmingId === order.id}
                           >
-                            {confirmingId === order.id ? 'Confirming...' : 'Confirm received'}
+                            {confirmingId === order.id ? 'Đang xác nhận...' : 'Xác nhận đã nhận'}
                           </button>
                         ) : null}
 
@@ -296,10 +312,10 @@ export default function MyOrdersPage() {
                             disabled={cancellingId === order.id || cancellationPending}
                           >
                             {cancellingId === order.id
-                              ? 'Submitting...'
+                              ? 'Đang gửi...'
                               : statusLower === 'shipped'
-                                ? 'Request cancel'
-                                : 'Cancel order'}
+                                ? 'Yêu cầu hủy'
+                                : 'Hủy đơn'}
                           </button>
                         ) : null}
 
@@ -310,7 +326,7 @@ export default function MyOrdersPage() {
                             onClick={() => onRetryVnpay(order)}
                             disabled={retryingId === order.id}
                           >
-                            {retryingId === order.id ? 'Redirecting...' : 'Pay again'}
+                            {retryingId === order.id ? 'Đang chuyển trang...' : 'Thanh toán lại'}
                           </button>
                         ) : null}
                       </div>
@@ -319,7 +335,7 @@ export default function MyOrdersPage() {
                         to={`/orders/${order.id}`}
                         className="text-xs font-medium text-slate-700 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
                       >
-                        View detail
+                        Xem chi tiết
                       </Link>
                     </div>
                   </div>

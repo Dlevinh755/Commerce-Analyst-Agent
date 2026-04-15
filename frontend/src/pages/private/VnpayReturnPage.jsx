@@ -10,7 +10,7 @@ export default function VnpayReturnPage() {
   const navigate = useNavigate();
   const clearCart = useCart((state) => state.clearCart);
   const processedRef = useRef(false);
-  const [status, setStatus] = useState('Processing VNPay result...');
+  const [status, setStatus] = useState('Đang xử lý kết quả VNPay...');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -26,12 +26,12 @@ export default function VnpayReturnPage() {
 
       if (responseCode !== '00') {
         sessionStorage.removeItem(PENDING_VNPAY_CHECKOUT_KEY);
-        setError('VNPay payment was not successful. No order was created.');
+        setError('Thanh toán VNPay không thành công. Chưa tạo đơn hàng nào.');
         return;
       }
 
       if (!pendingRaw) {
-        setError('No pending VNPay checkout was found.');
+        setError('Không tìm thấy phiên thanh toán VNPay đang chờ.');
         return;
       }
 
@@ -40,18 +40,18 @@ export default function VnpayReturnPage() {
         pendingCheckout = JSON.parse(pendingRaw);
       } catch {
         sessionStorage.removeItem(PENDING_VNPAY_CHECKOUT_KEY);
-        setError('VNPay checkout data is invalid.');
+        setError('Dữ liệu thanh toán VNPay không hợp lệ.');
         return;
       }
 
       try {
         const orderId = Number(pendingCheckout.createdOrderId);
         if (!Number.isInteger(orderId) || orderId <= 0) {
-          throw new Error('Invalid order id in pending checkout data.');
+          throw new Error('Mã đơn hàng trong dữ liệu chờ thanh toán không hợp lệ.');
         }
 
         // Payment confirmation is handled server-side via VNPay IPN.
-        setStatus('Payment confirmed. Redirecting to your order...');
+        setStatus('Thanh toán đã được xác nhận. Đang chuyển đến đơn hàng của bạn...');
 
         await clearCart();
         sessionStorage.removeItem(PENDING_VNPAY_CHECKOUT_KEY);
@@ -60,7 +60,7 @@ export default function VnpayReturnPage() {
           { replace: true }
         );
       } catch (err) {
-        setError(getErrorMessage(err, 'Could not finalize VNPay checkout.'));
+        setError(getErrorMessage(err, 'Không thể hoàn tất thanh toán VNPay.'));
       }
     }
 
@@ -69,14 +69,14 @@ export default function VnpayReturnPage() {
 
   return (
     <section className="card space-y-3">
-      <h1 className="text-2xl font-semibold">VNPay Checkout</h1>
+      <h1 className="text-2xl font-semibold">Kết quả thanh toán VNPay</h1>
       {error ? <p className="text-sm text-red-600">{error}</p> : <p className="text-sm text-slate-600">{status}</p>}
       <div className="flex gap-3">
         <Link to="/checkout" className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          Back to checkout
+          Quay lại trang thanh toán
         </Link>
         <Link to="/cart" className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          Back to cart
+          Quay lại giỏ hàng
         </Link>
       </div>
     </section>

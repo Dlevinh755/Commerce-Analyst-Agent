@@ -16,8 +16,8 @@ function normalizeCartItem(raw = {}) {
   return {
     id: raw.book_id ?? book.book_id ?? book.id ?? raw.bookId ?? raw.id,
     cartId: raw.cart_id ?? raw.cartId,
-    title: book.title ?? 'Untitled Book',
-    author: book.author ?? 'Unknown Author',
+    title: book.title ?? 'Chưa đặt tên',
+    author: book.author ?? 'Không rõ tác giả',
     price: Number(raw.unit_price ?? book.price ?? 0),
     quantity: Number(raw.quantity ?? 0),
     cover:
@@ -99,12 +99,12 @@ const useCartStore = create(
         } catch (error) {
           if (isUnauthorized(error)) {
             devLog('fetchCart:unauthorized');
-            set({ items: [], isLoading: false, error: 'Session expired. Please login again.' });
+            set({ items: [], isLoading: false, error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' });
             return [];
           }
 
           console.error(CART_LOG_PREFIX, 'fetchCart:error', error?.response?.status, error?.response?.data || error?.message);
-          set({ isLoading: false, error: error?.response?.data?.detail || 'Could not load cart.' });
+          set({ isLoading: false, error: error?.response?.data?.detail || 'Không thể tải giỏ hàng.' });
           return get().items;
         }
       },
@@ -164,12 +164,12 @@ const useCartStore = create(
         } catch (error) {
           if (isUnauthorized(error)) {
             devLog('removeItem:unauthorized');
-            set({ items: [], error: 'Session expired. Please login again.' });
+            set({ items: [], error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' });
             return;
           }
 
           console.error(CART_LOG_PREFIX, 'removeItem:error', error?.response?.status, error?.response?.data || error?.message);
-          set({ error: error?.response?.data?.detail || 'Could not remove item.' });
+          set({ error: error?.response?.data?.detail || 'Không thể xóa sản phẩm khỏi giỏ hàng.' });
         }
       },
 
@@ -203,12 +203,12 @@ const useCartStore = create(
         } catch (error) {
           if (isUnauthorized(error)) {
             devLog('updateQuantity:unauthorized');
-            set({ items: [], error: 'Session expired. Please login again.' });
+            set({ items: [], error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' });
             return;
           }
 
           console.error(CART_LOG_PREFIX, 'updateQuantity:error', error?.response?.status, error?.response?.data || error?.message);
-          set({ error: error?.response?.data?.detail || 'Could not update quantity.' });
+          set({ error: error?.response?.data?.detail || 'Không thể cập nhật số lượng.' });
         }
       },
 

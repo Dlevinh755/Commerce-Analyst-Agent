@@ -46,7 +46,7 @@ export default function Navbar() {
     <header className="border-b border-slate-200/80 bg-white/95 backdrop-blur">
       <div className="container-page flex min-h-16 flex-col gap-2 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:py-0">
         <Link to="/" className="text-3xl font-bold leading-none text-slate-800 sm:text-4xl">
-          Bookstore
+          Book Store
         </Link>
 
         <nav className="flex w-full flex-wrap items-center justify-start gap-1.5 rounded-full border border-slate-200 bg-white p-1.5 shadow-sm sm:w-auto sm:justify-end">
@@ -59,7 +59,7 @@ export default function Navbar() {
               </svg>
             }
           >
-            Books
+            Sách
           </NavItem>
 
           {isAuthenticated ? (
@@ -77,7 +77,7 @@ export default function Navbar() {
                       </svg>
                     }
                   >
-                    Cart
+                    Giỏ hàng
                   </NavItem>
                   <NavItem
                     to="/orders"
@@ -88,7 +88,7 @@ export default function Navbar() {
                       </svg>
                     }
                   >
-                    Orders
+                    Đơn hàng
                   </NavItem>
                   <NavItem
                     to="/payments"
@@ -99,7 +99,7 @@ export default function Navbar() {
                       </svg>
                     }
                   >
-                    Payments
+                    Thanh toán
                   </NavItem>
                 </>
               ) : null}
@@ -115,7 +115,7 @@ export default function Navbar() {
                       </svg>
                     }
                   >
-                    Orders
+                    Đơn hàng
                   </NavItem>
                   <NavItem
                     to="/seller/products"
@@ -126,7 +126,7 @@ export default function Navbar() {
                       </svg>
                     }
                   >
-                    My Products
+                    Sản phẩm của tôi
                   </NavItem>
                 </>
               ) : null}
@@ -142,7 +142,7 @@ export default function Navbar() {
                       </svg>
                     }
                   >
-                    Buyers
+                    Người mua
                   </NavItem>
                   <NavItem
                     to="/admin/sellers"
@@ -155,7 +155,7 @@ export default function Navbar() {
                       </svg>
                     }
                   >
-                    Sellers
+                    Người bán
                   </NavItem>
                   <NavItem
                     to="/admin/products"
@@ -166,7 +166,7 @@ export default function Navbar() {
                       </svg>
                     }
                   >
-                    Products
+                    Sản phẩm
                   </NavItem>
                   <NavItem
                     to="/admin/orders"
@@ -177,7 +177,7 @@ export default function Navbar() {
                       </svg>
                     }
                   >
-                    Orders
+                    Đơn hàng
                   </NavItem>
                 </>
               ) : null}
@@ -192,7 +192,7 @@ export default function Navbar() {
                   </svg>
                 }
               >
-                Profile
+                Hồ sơ
               </NavItem>
               <button
                 type="button"
@@ -204,7 +204,7 @@ export default function Navbar() {
                   <path d="M16 17l5-5-5-5" />
                   <path d="M21 12H9" />
                 </svg>
-                Logout
+                Đăng xuất
               </button>
             </>
           ) : (
@@ -219,10 +219,10 @@ export default function Navbar() {
                   </svg>
                 }
               >
-                Login
+                Đăng nhập
               </NavItem>
               <NavLink to="/register" className="btn-primary inline-flex items-center rounded-full px-4 py-2 text-sm">
-                Register
+                Đăng ký
               </NavLink>
             </>
           )}

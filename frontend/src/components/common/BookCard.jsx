@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useCart from '../../hooks/useCart';
 import useAuth from '../../hooks/useAuth';
+import { formatCurrencyVND } from '../../utils/currency';
 
 export default function BookCard({ book, onUnauthorized, onAddedToCart }) {
   const addItem = useCart((state) => state.addItem);
@@ -11,10 +12,10 @@ export default function BookCard({ book, onUnauthorized, onAddedToCart }) {
   const addToCart = async () => {
     if (!isAuthenticated) {
       if (onUnauthorized) {
-        onUnauthorized('Please login to add this book to your cart.');
+        onUnauthorized('Vui lòng đăng nhập để thêm sách vào giỏ hàng.');
       }
       navigate('/login', {
-        state: { from: location, message: 'Please login to add this book to your cart.' },
+        state: { from: location, message: 'Vui lòng đăng nhập để thêm sách vào giỏ hàng.' },
       });
       return;
     }
@@ -22,11 +23,11 @@ export default function BookCard({ book, onUnauthorized, onAddedToCart }) {
     try {
       await addItem(book, 1);
       if (onAddedToCart) {
-        onAddedToCart(`${book.title} added to cart.`);
+        onAddedToCart(`Đã thêm ${book.title} vào giỏ hàng.`);
       }
     } catch (error) {
       if (onUnauthorized) {
-        onUnauthorized(error?.response?.data?.detail || 'Could not add this book to your cart.');
+        onUnauthorized(error?.response?.data?.detail || 'Không thể thêm sách này vào giỏ hàng.');
       }
     }
   };
@@ -40,19 +41,19 @@ export default function BookCard({ book, onUnauthorized, onAddedToCart }) {
           {book.category}
         </span>
         <h3 className="line-clamp-2 text-lg font-semibold">{book.title}</h3>
-        <p className="text-sm text-slate-500">by {book.author}</p>
-        <p className="text-xs text-slate-500">Sold by {book.sellerDisplay}</p>
+        <p className="text-sm text-slate-500">Tác giả: {book.author}</p>
+        <p className="text-xs text-slate-500">Người bán: {book.sellerDisplay}</p>
         <div className="flex items-center justify-between pt-2">
-          <p className="font-bold text-brand-700">${book.price}</p>
+          <p className="font-bold text-brand-700">{formatCurrencyVND(book.price)}</p>
           <p className="text-sm text-amber-500">★ {Number(book.rating || 0).toFixed(1)} ({book.ratingCount || 0})</p>
         </div>
-        <p className="text-xs text-slate-500">Purchased: {book.purchaseCount || 0}</p>
+        <p className="text-xs text-slate-500">Đã mua: {book.purchaseCount || 0}</p>
         <div className="pt-3 flex gap-2">
           <Link to={`/books/${book.id}`} className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-medium">
-            View
+            Xem
           </Link>
-          <button type="button" className="btn-primary flex-1" onClick={addToCart}>
-            Add to Cart
+          <button type="button" className="btn-primary flex-1 whitespace-nowrap" onClick={addToCart}>
+            Thêm vào giỏ
           </button>
         </div>
       </div>

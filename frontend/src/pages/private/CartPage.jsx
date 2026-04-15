@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import useCart from '../../hooks/useCart';
+import { formatCurrencyVND } from '../../utils/currency';
 
 const FALLBACK_COVER =
   'https://images.unsplash.com/photo-1526243741027-444d633d7365?auto=format&fit=crop&w=300&q=80';
@@ -38,21 +39,21 @@ export default function CartPage() {
   return (
     <section className="space-y-5">
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      {isLoading ? <div className="card text-center text-slate-600">Loading cart...</div> : null}
+      {isLoading ? <div className="card text-center text-slate-600">Đang tải giỏ hàng...</div> : null}
 
       {!isLoading && items.length === 0 ? (
         <div className="card text-center">
-          <p className="text-slate-600">Your cart is empty.</p>
+          <p className="text-slate-600">Giỏ hàng của bạn đang trống.</p>
           <Link to="/books" className="btn-primary mt-4 inline-block">
-            Continue shopping
+            Tiếp tục mua sắm
           </Link>
         </div>
       ) : (
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-semibold text-slate-900">My Cart</h1>
-              <p className="text-sm text-slate-500">{totalItems} items</p>
+              <h1 className="text-3xl font-semibold text-slate-900">Giỏ hàng của tôi</h1>
+              <p className="text-sm text-slate-500">{totalItems} sản phẩm</p>
             </div>
             {items.length ? (
               <button
@@ -60,7 +61,7 @@ export default function CartPage() {
                 className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 onClick={onClearCart}
               >
-                Clear cart
+                Xóa giỏ hàng
               </button>
             ) : null}
           </div>
@@ -88,8 +89,8 @@ export default function CartPage() {
 
                       <div className="flex min-w-0 flex-1 flex-col gap-2">
                         <div className="min-w-0">
-                          <p className="line-clamp-2 text-2xl font-medium leading-tight text-slate-900">{item.title}</p>
-                          <p className="mt-1 text-sm text-slate-600">by {item.author}</p>
+                          <p className="line-clamp-2 text-xl font-medium leading-tight text-slate-900">{item.title}</p>
+                          <p className="mt-1 text-sm text-slate-600">Tác giả: {item.author}</p>
                         </div>
 
                         <div className="mt-1 flex w-fit items-center gap-2 rounded-full border border-slate-300 bg-white px-2 py-1">
@@ -110,7 +111,7 @@ export default function CartPage() {
                           </button>
                         </div>
 
-                        <span className="px-1 text-2xl font-semibold text-slate-900">${item.price.toFixed(2)} each</span>
+                        <p className="px-1 text-xl font-semibold text-slate-700">{formatCurrencyVND(item.price)} / cuốn</p>
                       </div>
                     </div>
 
@@ -119,14 +120,14 @@ export default function CartPage() {
                         to={`/books?search=${encodeURIComponent(item.title)}`}
                         className="w-full rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-center text-xs font-medium leading-tight text-amber-800 hover:bg-amber-200"
                       >
-                        Recommended similar products
+                        Gợi ý sản phẩm tương tự
                       </Link>
                       <button
                         type="button"
                         className="w-full rounded-lg border border-red-200 bg-red-100 px-3 py-1 text-xs font-medium text-red-700 transition hover:bg-red-200"
                         onClick={() => onRemoveItem(item)}
                       >
-                        Delete
+                        Xóa
                       </button>
                     </div>
                   </div>
@@ -135,29 +136,29 @@ export default function CartPage() {
             </div>
 
             <div className="h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="text-3xl font-medium text-slate-900">Order summary</h2>
+              <h2 className="text-3xl font-medium text-slate-900">Tóm tắt đơn hàng</h2>
               <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
-                <span>Subtotal ({totalItems} items)</span>
-                <span>${totalAmount.toFixed(2)}</span>
+                <span>Tạm tính ({totalItems} sản phẩm)</span>
+                <span>{formatCurrencyVND(totalAmount)}</span>
               </div>
               <div className="mt-2 flex items-center justify-between text-sm text-slate-600">
-                <span>Estimated Shipping</span>
-                <span>$5.00</span>
+                <span>Phí vận chuyển ước tính</span>
+                <span>{formatCurrencyVND(5)}</span>
               </div>
               <div className="mt-3 border-t border-slate-200 pt-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xl font-semibold text-slate-900">Estimated Total</span>
-                  <span className="text-2xl font-bold text-slate-900">${(totalAmount + 5).toFixed(2)}</span>
+                  <span className="text-xl font-semibold text-slate-900">Tổng cộng ước tính</span>
+                  <span className="text-2xl font-bold text-slate-900">{formatCurrencyVND(totalAmount + 5)}</span>
                 </div>
               </div>
               <Link
                 to="/checkout"
                 className="mt-4 block rounded-xl bg-gradient-to-r from-brand-700 to-brand-500 px-4 py-3 text-center font-medium text-white shadow-sm transition hover:brightness-105"
               >
-                Checkout
+                Thanh toán
               </Link>
               <Link to="/books" className="mt-3 block text-center text-sm font-medium text-brand-700 hover:text-brand-500">
-                Continue shopping
+                Tiếp tục mua sắm
               </Link>
             </div>
           </div>

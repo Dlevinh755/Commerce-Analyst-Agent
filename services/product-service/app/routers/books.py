@@ -37,6 +37,7 @@ def list_books(
     author: str | None = Query(default=None),
     min_price: float | None = Query(default=None, ge=0),
     max_price: float | None = Query(default=None, ge=0),
+    min_purchase_count: int | None = Query(default=None, ge=0),
     seller_id: int | None = Query(default=None),
     in_stock: bool | None = Query(default=None),
     page: int = Query(default=1, ge=1),
@@ -66,6 +67,9 @@ def list_books(
 
     if max_price is not None:
         query = query.filter(Book.price <= max_price)
+
+    if min_purchase_count is not None:
+        query = query.filter(Book.purchase_count >= min_purchase_count)
 
     if seller_id is not None:
         query = query.filter(Book.seller_id == seller_id)

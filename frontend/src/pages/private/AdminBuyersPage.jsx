@@ -3,6 +3,7 @@ import { authService } from '../../services/authService';
 import Toast from '../../components/common/Toast';
 import AdminSectionNav from '../../components/admin/AdminSectionNav';
 import { getErrorMessage } from '../../utils/errorMessage';
+import { formatCurrencyVND } from '../../utils/currency';
 
 export default function AdminBuyersPage() {
   const [buyers, setBuyers] = useState([]);
@@ -18,7 +19,7 @@ export default function AdminBuyersPage() {
       const { data } = await authService.listUsers({ role: 'buyer', page: 1, page_size: 100 });
       setBuyers(Array.isArray(data?.items) ? data.items : []);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not load buyers.'));
+      setError(getErrorMessage(err, 'Không thể tải danh sách người mua.'));
     } finally {
       setLoading(false);
     }
@@ -35,7 +36,7 @@ export default function AdminBuyersPage() {
       setBuyers((prev) => prev.map((item) => (item.user_id === userId ? data : item)));
       setToast(successMessage);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not update buyer.'));
+      setToast(getErrorMessage(err, 'Không thể cập nhật người mua.'));
     } finally {
       setSavingUserId(null);
     }
@@ -50,9 +51,9 @@ export default function AdminBuyersPage() {
           item.user_id === userId ? { ...item, is_hidden: true, is_active: false } : item
         )
       );
-      setToast('Buyer hidden successfully.');
+      setToast('Đã ẩn người mua thành công.');
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not hide buyer.'));
+      setToast(getErrorMessage(err, 'Không thể ẩn người mua.'));
     } finally {
       setSavingUserId(null);
     }
@@ -61,8 +62,8 @@ export default function AdminBuyersPage() {
   return (
     <section className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">Admin Buyers</h1>
-        <p className="mt-1 text-slate-600">Review buyer accounts and monitor balances.</p>
+        <h1 className="text-2xl font-semibold">Quản lý người mua</h1>
+        <p className="mt-1 text-slate-600">Xem tài khoản người mua và theo dõi số dư.</p>
       </div>
 
       <AdminSectionNav />
@@ -70,24 +71,24 @@ export default function AdminBuyersPage() {
       {error ? <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       {loading ? (
-        <div className="card">Loading buyers...</div>
+        <div className="card">Đang tải danh sách người mua...</div>
       ) : (
         <article className="card overflow-x-auto">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Buyers</h2>
+            <h2 className="text-lg font-semibold">Người mua</h2>
             <button type="button" className="rounded-lg border px-3 py-1.5 text-sm" onClick={loadBuyers}>
-              Refresh
+              Làm mới
             </button>
           </div>
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="px-3 py-2 text-left font-medium">ID</th>
-                <th className="px-3 py-2 text-left font-medium">User</th>
-                <th className="px-3 py-2 text-left font-medium">Account Number</th>
-                <th className="px-3 py-2 text-left font-medium">Balance</th>
-                <th className="px-3 py-2 text-left font-medium">Flags</th>
-                <th className="px-3 py-2 text-right font-medium">Actions</th>
+                <th className="px-3 py-2 text-left font-medium">Tài khoản</th>
+                <th className="px-3 py-2 text-left font-medium">Số tài khoản</th>
+                <th className="px-3 py-2 text-left font-medium">Số dư</th>
+                <th className="px-3 py-2 text-left font-medium">Trạng thái</th>
+                <th className="px-3 py-2 text-right font-medium">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -99,10 +100,10 @@ export default function AdminBuyersPage() {
                     <p className="text-xs text-slate-500">{buyer.email}</p>
                   </td>
                   <td className="px-3 py-2">{buyer.account_number || '-'}</td>
-                  <td className="px-3 py-2 font-medium">${Number(buyer.balance || 0).toFixed(2)}</td>
+                  <td className="px-3 py-2 font-medium">{formatCurrencyVND(buyer.balance)}</td>
                   <td className="px-3 py-2 text-xs text-slate-600">
-                    <p>Active: {buyer.is_active ? 'Yes' : 'No'}</p>
-                    <p>Hidden: {buyer.is_hidden ? 'Yes' : 'No'}</p>
+                    <p>Kích hoạt: {buyer.is_active ? 'Có' : 'Không'}</p>
+                    <p>Ẩn: {buyer.is_hidden ? 'Có' : 'Không'}</p>
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-2">
@@ -113,12 +114,12 @@ export default function AdminBuyersPage() {
                           onPatchBuyer(
                             buyer.user_id,
                             { is_active: !buyer.is_active },
-                            buyer.is_active ? 'Buyer deactivated.' : 'Buyer activated.'
+                            buyer.is_active ? 'Đã tắt người mua.' : 'Đã kích hoạt người mua.'
                           )
                         }
                         disabled={savingUserId === buyer.user_id}
                       >
-                        {buyer.is_active ? 'Deactivate' : 'Activate'}
+                        {buyer.is_active ? 'Tắt' : 'Kích hoạt'}
                       </button>
                       <button
                         type="button"
@@ -126,7 +127,7 @@ export default function AdminBuyersPage() {
                         onClick={() => onHideBuyer(buyer.user_id)}
                         disabled={savingUserId === buyer.user_id || buyer.is_hidden}
                       >
-                        {buyer.is_hidden ? 'Hidden' : 'Hide'}
+                        {buyer.is_hidden ? 'Đã ẩn' : 'Ẩn'}
                       </button>
                     </div>
                   </td>

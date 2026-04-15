@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import Toast from '../../components/common/Toast';
 import { sellerProductService } from '../../services/sellerProductService';
 import { getErrorMessage } from '../../utils/errorMessage';
+import { formatCurrencyVND } from '../../utils/currency';
 
 export default function SellerProductsPage() {
   const location = useLocation();
@@ -20,7 +21,7 @@ export default function SellerProductsPage() {
       const { data } = await sellerProductService.listMine();
       setProducts(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not load your products.'));
+      setError(getErrorMessage(err, 'Không thể tải sản phẩm của bạn.'));
     } finally {
       setLoading(false);
     }
@@ -45,9 +46,9 @@ export default function SellerProductsPage() {
           item.book_id === product.book_id ? { ...item, is_hidden: true, is_active: false } : item
         )
       );
-      setToast(`Hidden ${product.title}.`);
+      setToast(`Đã ẩn ${product.title}.`);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Hide failed.'));
+      setToast(getErrorMessage(err, 'Ẩn sản phẩm thất bại.'));
     } finally {
       setHidingId(null);
     }
@@ -57,21 +58,21 @@ export default function SellerProductsPage() {
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">My Products</h1>
-          <p className="mt-1 text-slate-600">Manage products you published as a seller.</p>
+          <h1 className="text-2xl font-semibold">Sản phẩm của tôi</h1>
+          <p className="mt-1 text-slate-600">Quản lý các sản phẩm bạn đã đăng bán.</p>
         </div>
         <Link to="/seller/products/new" className="btn-primary">
-          Add Product
+          Thêm sản phẩm
         </Link>
       </div>
 
       {error ? <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       {loading ? (
-        <div className="card">Loading products...</div>
+        <div className="card">Đang tải sản phẩm...</div>
       ) : products.length === 0 ? (
         <div className="card text-slate-600">
-          No products yet. Create your first product from the Add Product button.
+          Chưa có sản phẩm. Hãy tạo sản phẩm đầu tiên bằng nút Thêm sản phẩm.
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -79,11 +80,11 @@ export default function SellerProductsPage() {
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="px-4 py-3 text-left font-medium">Title</th>
-                <th className="px-4 py-3 text-left font-medium">Author</th>
-                <th className="px-4 py-3 text-left font-medium">Price</th>
-                <th className="px-4 py-3 text-left font-medium">Stock</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
+                <th className="px-4 py-3 text-left font-medium">Tác giả</th>
+                <th className="px-4 py-3 text-left font-medium">Giá</th>
+                <th className="px-4 py-3 text-left font-medium">Tồn kho</th>
+                <th className="px-4 py-3 text-left font-medium">Trạng thái</th>
+                <th className="px-4 py-3 text-right font-medium">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -91,11 +92,11 @@ export default function SellerProductsPage() {
                 <tr key={product.book_id}>
                   <td className="px-4 py-3">{product.title}</td>
                   <td className="px-4 py-3 text-slate-600">{product.author}</td>
-                  <td className="px-4 py-3">${Number(product.price).toFixed(2)}</td>
+                  <td className="px-4 py-3">{formatCurrencyVND(product.price)}</td>
                   <td className="px-4 py-3">{product.stock_quantity}</td>
                   <td className="px-4 py-3 text-xs text-slate-600">
-                    <p>Active: {product.is_active ? 'Yes' : 'No'}</p>
-                    <p>Hidden: {product.is_hidden ? 'Yes' : 'No'}</p>
+                    <p>Kích hoạt: {product.is_active ? 'Có' : 'Không'}</p>
+                    <p>Ẩn: {product.is_hidden ? 'Có' : 'Không'}</p>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
@@ -103,7 +104,7 @@ export default function SellerProductsPage() {
                         to={`/seller/products/${product.book_id}/edit`}
                         className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium"
                       >
-                        Edit
+                        Sửa
                       </Link>
                       <button
                         type="button"
@@ -111,7 +112,7 @@ export default function SellerProductsPage() {
                         onClick={() => onHide(product)}
                         disabled={hidingId === product.book_id || product.is_hidden}
                       >
-                        {product.is_hidden ? 'Hidden' : hidingId === product.book_id ? 'Hiding...' : 'Hide'}
+                        {product.is_hidden ? 'Đã ẩn' : hidingId === product.book_id ? 'Đang ẩn...' : 'Ẩn'}
                       </button>
                     </div>
                   </td>

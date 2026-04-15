@@ -1,8 +1,46 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { orderService } from '../../services/orderService';
 import { getErrorMessage } from '../../utils/errorMessage';
 import Toast from '../../components/common/Toast';
 import useAuth from '../../hooks/useAuth';
+
+const DATE_FILTERS = [
+  { value: 'all', label: 'Date Range' },
+  { value: '7', label: 'Last 7 days' },
+  { value: '30', label: 'Last 30 days' },
+];
+
+function formatCurrency(value) {
+  return `$${Number(value || 0).toFixed(2)}`;
+}
+
+function formatDate(value) {
+  if (!value) {
+    return '-';
+  }
+  return new Date(value).toLocaleString();
+}
+
+function normalizeStatus(value) {
+  return String(value || '').toLowerCase();
+}
+
+function getStatusBadgeClass(status) {
+  const normalized = normalizeStatus(status);
+  if (normalized === 'delivered' || normalized === 'completed') {
+    return 'bg-emerald-100 text-emerald-700';
+  }
+  if (normalized === 'shipped') {
+    return 'bg-sky-100 text-sky-700';
+  }
+  if (normalized === 'pending' || normalized === 'processing' || normalized === 'ready_to_ship') {
+    return 'bg-amber-100 text-amber-700';
+  }
+  if (normalized === 'cancelled' || normalized === 'canceled') {
+    return 'bg-rose-100 text-rose-700';
+  }
+  return 'bg-slate-100 text-slate-700';
+}
 
 export default function OrdersPage() {
   const user = useAuth((state) => state.user);
@@ -13,6 +51,9 @@ export default function OrdersPage() {
   const [shippingOrderId, setShippingOrderId] = useState(null);
   const [reviewingOrderId, setReviewingOrderId] = useState(null);
   const [toast, setToast] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('all');
 
   const loadOrders = async () => {
     setLoading(true);
@@ -72,6 +113,76 @@ export default function OrdersPage() {
     }
   };
 
+  const ordersWithSellerData = useMemo(
+    () =>
+      orders.map((order) => {
+        const mySellerOrder = Array.isArray(order.seller_orders)
+          ? order.seller_orders.find((item) => Number(item?.seller_id) === currentSellerId)
+          : null;
+        const mySellerStatus = normalizeStatus(mySellerOrder?.status || order.status);
+        const buyerId = order.buyer_id ? `#${order.buyer_id}` : null;
+        const buyerName = order.buyer_name || null;
+        const buyerLabel = buyerName || buyerId || '-';
+        return {
+          ...order,
+          buyerLabel,
+          mySellerOrder,
+          mySellerStatus,
+        };
+      }),
+    [orders, currentSellerId]
+  );
+
+  const filteredOrders = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const now = Date.now();
+    const rangeDays = Number(dateFilter);
+
+    return ordersWithSellerData.filter((order) => {
+      if (normalizedSearch) {
+        const orderIdText = String(order.order_id || '').toLowerCase();
+        const buyerText = String(order.buyerLabel || '').toLowerCase();
+        if (!orderIdText.includes(normalizedSearch) && !buyerText.includes(normalizedSearch)) {
+          return false;
+        }
+      }
+
+      if (statusFilter) {
+        const normalized = normalizeStatus(order.status);
+        if (normalized !== statusFilter) {
+          return false;
+        }
+      }
+
+      if (rangeDays > 0) {
+        const orderTime = new Date(order.order_date).getTime();
+        if (Number.isFinite(orderTime)) {
+          const diffDays = (now - orderTime) / (1000 * 60 * 60 * 24);
+          if (diffDays > rangeDays) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  }, [ordersWithSellerData, searchTerm, statusFilter, dateFilter]);
+
+  const summaryCounts = useMemo(() => {
+    const counts = { pending: 0, shipped: 0, delivered: 0 };
+    ordersWithSellerData.forEach((order) => {
+      const status = normalizeStatus(order.mySellerStatus || order.status);
+      if (status === 'delivered' || status === 'completed') {
+        counts.delivered += 1;
+      } else if (status === 'shipped') {
+        counts.shipped += 1;
+      } else if (status) {
+        counts.pending += 1;
+      }
+    });
+    return counts;
+  }, [ordersWithSellerData]);
+
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -84,103 +195,184 @@ export default function OrdersPage() {
         </button>
       </div>
 
-      {error ? <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
-
-      {loading ? (
-        <div className="card">Loading orders...</div>
-      ) : orders.length === 0 ? (
-        <div className="card text-slate-600">No orders found for your books.</div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Order</th>
-                <th className="px-4 py-3 text-left font-medium">Buyer</th>
-                <th className="px-4 py-3 text-left font-medium">Date</th>
-                <th className="px-4 py-3 text-left font-medium">Total</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {orders.map((order) => {
-                const status = String(order.status || '').toLowerCase();
-                const cancellationStatus = String(order.cancellation_status || 'none').toLowerCase();
-                const mySellerOrder = Array.isArray(order.seller_orders)
-                  ? order.seller_orders.find((item) => Number(item?.seller_id) === currentSellerId)
-                  : null;
-                const mySellerStatus = String(mySellerOrder?.status || '').toLowerCase();
-                const canMarkShipped = mySellerStatus
-                  ? ['pending', 'processing', 'ready_to_ship'].includes(mySellerStatus)
-                  : status === 'pending' || status === 'processing';
-                const hasPendingCancellation = status === 'shipped' && cancellationStatus === 'pending';
-                const myItemCount = Array.isArray(order.items)
-                  ? order.items.filter((item) => Number(item?.seller_id) === currentSellerId).length
-                  : 0;
-                return (
-                  <tr key={order.order_id}>
-                    <td className="px-4 py-3 font-medium">#{order.order_id}</td>
-                    <td className="px-4 py-3">{order.buyer_id}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {order.order_date ? new Date(order.order_date).toLocaleString() : '-'}
-                    </td>
-                    <td className="px-4 py-3">${Number(order.total_amount || 0).toFixed(2)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
-                          order:{order.status}
-                        </span>
-                        <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700">
-                          my-items:{mySellerOrder?.status || 'n/a'} ({myItemCount})
-                        </span>
-                        {cancellationStatus !== 'none' ? (
-                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
-                            cancel:{cancellationStatus}
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {hasPendingCancellation ? (
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-medium text-emerald-700"
-                            onClick={() => onApproveCancellation(order.order_id)}
-                            disabled={reviewingOrderId === order.order_id}
-                          >
-                            {reviewingOrderId === order.order_id ? 'Updating...' : 'Approve cancel'}
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
-                            onClick={() => onRejectCancellation(order.order_id)}
-                            disabled={reviewingOrderId === order.order_id}
-                          >
-                            {reviewingOrderId === order.order_id ? 'Updating...' : 'Reject'}
-                          </button>
-                        </div>
-                      ) : canMarkShipped ? (
-                        <button
-                          type="button"
-                          className="btn-primary px-3 py-1.5 text-xs"
-                          onClick={() => onMarkShipped(order.order_id)}
-                          disabled={shippingOrderId === order.order_id}
-                        >
-                          {shippingOrderId === order.order_id ? 'Updating...' : 'Mark my items shipped'}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-slate-500">-</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      <section className="grid gap-3 md:grid-cols-3">
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">Pending Orders</p>
+            <p className="text-lg font-semibold text-slate-900">{summaryCounts.pending}</p>
+          </div>
         </div>
-      )}
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 7h13l3 4v6a1 1 0 0 1-1 1h-2" />
+              <circle cx="7" cy="18" r="2" />
+              <circle cx="17" cy="18" r="2" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">Shipped Orders</p>
+            <p className="text-lg font-semibold text-slate-900">{summaryCounts.shipped}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M5 12l4 4L19 6" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">Delivered Orders</p>
+            <p className="text-lg font-semibold text-slate-900">{summaryCounts.delivered}</p>
+          </div>
+        </div>
+      </section>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+          <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3" />
+            </svg>
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              className="w-full bg-transparent text-sm text-slate-700 outline-none"
+              placeholder="Search Order ID or Buyer Name"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="h-9 w-44 shrink-0 rounded-lg border border-slate-300 px-3 text-slate-900 outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="">Order Status</option>
+            <option value="pending">Pending</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select
+            value={dateFilter}
+            onChange={(event) => setDateFilter(event.target.value)}
+            className="h-9 w-44 shrink-0 rounded-lg border border-slate-300 px-3 text-slate-900 outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            {DATE_FILTERS.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {error ? <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
+
+        {loading ? (
+          <div className="card mt-3">Loading orders...</div>
+        ) : filteredOrders.length === 0 ? (
+          <div className="card mt-3 text-slate-600">No orders found for your books.</div>
+        ) : (
+          <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="w-10 px-3 py-3 text-left font-medium">
+                    <input type="checkbox" className="h-4 w-4 rounded border-slate-300" />
+                  </th>
+                  <th className="px-3 py-3 text-left font-medium">Order ID</th>
+                  <th className="px-3 py-3 text-left font-medium">Buyer (Name)</th>
+                  <th className="px-3 py-3 text-left font-medium">Date (Full)</th>
+                  <th className="px-3 py-3 text-left font-medium">Total Amount</th>
+                  <th className="px-3 py-3 text-left font-medium">Order Status</th>
+                  <th className="px-3 py-3 text-left font-medium">Items Status</th>
+                  <th className="px-3 py-3 text-right font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredOrders.map((order) => {
+                  const status = normalizeStatus(order.status);
+                  const cancellationStatus = normalizeStatus(order.cancellation_status || 'none');
+                  const mySellerStatus = normalizeStatus(order.mySellerOrder?.status || order.status);
+                  const canMarkShipped = mySellerStatus
+                    ? ['pending', 'processing', 'ready_to_ship'].includes(mySellerStatus)
+                    : status === 'pending' || status === 'processing';
+                  const hasPendingCancellation = status === 'shipped' && cancellationStatus === 'pending';
+                  const sellerItems = Array.isArray(order.items)
+                    ? order.items.filter((item) => Number(item?.seller_id) === currentSellerId)
+                    : [];
+                  const pendingItemCount = sellerItems.filter((item) => {
+                    const itemStatus = normalizeStatus(item?.status);
+                    return !itemStatus || ['pending', 'processing', 'ready_to_ship'].includes(itemStatus);
+                  }).length;
+                  const showPendingCount = pendingItemCount > 0 && canMarkShipped;
+                  return (
+                    <tr key={order.order_id}>
+                      <td className="px-3 py-3">
+                        <input type="checkbox" className="h-4 w-4 rounded border-slate-300" />
+                      </td>
+                      <td className="px-3 py-3 font-medium">#{order.order_id}</td>
+                      <td className="px-3 py-3">{order.buyerLabel}</td>
+                      <td className="px-3 py-3 text-slate-600">{formatDate(order.order_date)}</td>
+                      <td className="px-3 py-3">{formatCurrency(order.total_amount)}</td>
+                      <td className="px-3 py-3">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
+                          {order.status || 'pending'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(mySellerStatus)}`}>
+                          {mySellerStatus || 'n/a'}{showPendingCount ? ` (${pendingItemCount})` : ''}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        {hasPendingCancellation ? (
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-medium text-emerald-700"
+                              onClick={() => onApproveCancellation(order.order_id)}
+                              disabled={reviewingOrderId === order.order_id}
+                            >
+                              {reviewingOrderId === order.order_id ? 'Updating...' : 'Approve cancel'}
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
+                              onClick={() => onRejectCancellation(order.order_id)}
+                              disabled={reviewingOrderId === order.order_id}
+                            >
+                              {reviewingOrderId === order.order_id ? 'Updating...' : 'Reject'}
+                            </button>
+                          </div>
+                        ) : canMarkShipped ? (
+                          <button
+                            type="button"
+                            className="btn-primary px-3 py-1.5 text-xs"
+                            onClick={() => onMarkShipped(order.order_id)}
+                            disabled={shippingOrderId === order.order_id}
+                          >
+                            {shippingOrderId === order.order_id ? 'Updating...' : 'Mark as shipped'}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <Toast message={toast} onClose={() => setToast('')} />
     </section>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import useAuth from '../../hooks/useAuth';
 import useOrderStore from '../../store/orderStore';
 
 const FALLBACK_COVER =
@@ -38,6 +39,8 @@ function formatStatus(status) {
 }
 
 export default function MyPaymentsPage() {
+  const isHydrated = useAuth((state) => state.isHydrated);
+  const isAuthenticated = useAuth((state) => state.isAuthenticated);
   const paymentsRaw = useOrderStore((state) => state.payments);
   const payments = Array.isArray(paymentsRaw) ? paymentsRaw : [];
   const ordersRaw = useOrderStore((state) => state.orders);
@@ -48,8 +51,11 @@ export default function MyPaymentsPage() {
   const error = useOrderStore((state) => state.error);
 
   useEffect(() => {
+    if (!isHydrated || !isAuthenticated) {
+      return;
+    }
     Promise.all([fetchPayments(), fetchOrders()]).catch(() => {});
-  }, [fetchPayments, fetchOrders]);
+  }, [fetchPayments, fetchOrders, isHydrated, isAuthenticated]);
 
   const orderById = useMemo(() => {
     const map = new Map();

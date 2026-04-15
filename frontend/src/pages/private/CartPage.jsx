@@ -114,19 +114,19 @@ export default function CartPage() {
                       </div>
                     </div>
 
-                    <div className="flex w-full flex-col items-end gap-2 text-sm sm:w-48 sm:flex-shrink-0">
+                    <div className="flex w-full flex-col items-stretch gap-2 text-sm sm:w-48 sm:flex-shrink-0">
                       <Link
                         to={`/books?search=${encodeURIComponent(item.title)}`}
-                        className="rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-center text-xs font-medium text-amber-800 hover:bg-amber-200"
+                        className="w-full rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-center text-xs font-medium leading-tight text-amber-800 hover:bg-amber-200"
                       >
-                        Goi y san pham tuong tu
+                        Recommended similar products
                       </Link>
                       <button
                         type="button"
-                        className="rounded-lg border border-red-200 bg-red-100 px-3 py-1 text-xs font-medium text-red-700 transition hover:bg-red-200"
+                        className="w-full rounded-lg border border-red-200 bg-red-100 px-3 py-1 text-xs font-medium text-red-700 transition hover:bg-red-200"
                         onClick={() => onRemoveItem(item)}
                       >
-                        Xoa
+                        Delete
                       </button>
                     </div>
                   </div>

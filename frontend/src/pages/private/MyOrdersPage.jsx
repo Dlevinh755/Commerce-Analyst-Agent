@@ -16,6 +16,20 @@ function formatCurrency(value) {
   return `$${Number(value || 0).toFixed(2)}`;
 }
 
+function formatPaymentMethod(method) {
+  const normalized = String(method || '').trim().toLowerCase();
+  if (!normalized) {
+    return '-';
+  }
+  if (normalized === 'cod') {
+    return 'COD';
+  }
+  if (normalized === 'vnpay') {
+    return 'VNPay';
+  }
+  return String(method);
+}
+
 function getStatusBadgeClass(status) {
   const s = String(status || '').toLowerCase();
   if (s === 'delivered' || s === 'completed') {
@@ -57,6 +71,8 @@ function BookThumb({ item, fallbackCover }) {
 }
 
 export default function MyOrdersPage() {
+  const isHydrated = useAuth((state) => state.isHydrated);
+  const isAuthenticated = useAuth((state) => state.isAuthenticated);
   const ordersRaw = useOrderStore((state) => state.orders);
   const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
   const fetchOrders = useOrderStore((state) => state.fetchOrders);
@@ -70,8 +86,11 @@ export default function MyOrdersPage() {
   const [coverByBookId, setCoverByBookId] = useState({});
 
   useEffect(() => {
+    if (!isHydrated || !isAuthenticated) {
+      return;
+    }
     fetchOrders().catch(() => {});
-  }, [fetchOrders]);
+  }, [fetchOrders, isHydrated, isAuthenticated]);
 
   useEffect(() => {
     const missingBookIds = [...new Set(
@@ -250,9 +269,7 @@ export default function MyOrdersPage() {
                     </div>
 
                     <p className="mt-1 text-sm font-medium text-slate-700">Total: {formatCurrency(total)}</p>
-                    <p className="text-sm text-slate-600">
-                      Payment: {order.payment_method || '-'} - {order.payment_status || 'pending'}
-                    </p>
+                    <p className="text-sm text-slate-600">Payment method: {formatPaymentMethod(order.payment_method)}</p>
 
                     {cancellationPending ? (
                       <p className="mt-1 text-xs font-medium text-amber-700">Cancellation request pending seller approval.</p>
@@ -293,7 +310,7 @@ export default function MyOrdersPage() {
                             onClick={() => onRetryVnpay(order)}
                             disabled={retryingId === order.id}
                           >
-                            {retryingId === order.id ? 'Redirecting...' : 'Thanh toan lai'}
+                            {retryingId === order.id ? 'Redirecting...' : 'Pay again'}
                           </button>
                         ) : null}
                       </div>

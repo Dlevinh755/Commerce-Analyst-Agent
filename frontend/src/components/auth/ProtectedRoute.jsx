@@ -6,9 +6,9 @@ export default function ProtectedRoute() {
   const isHydrated = useAuth((state) => state.isHydrated);
   const location = useLocation();
 
-  // Wait for store to hydrate from localStorage before checking authentication
-  if (!isHydrated) {
-    return <Outlet />;
+  // If user is already authenticated in memory, let route render immediately.
+  if (!isHydrated && !isAuthenticated) {
+    return <div className="container-page py-6 text-sm text-slate-500">Loading session...</div>;
   }
 
   if (!isAuthenticated) {

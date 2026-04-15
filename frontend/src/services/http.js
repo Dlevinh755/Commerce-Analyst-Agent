@@ -1,10 +1,10 @@
 import axios from 'axios';
+import useAuthStore from '../store/authStore';
 import {
   clearAccessToken,
   getAccessToken,
   getRefreshToken,
-  setAccessToken,
-  setRefreshToken,
+  setAuthTokens,
 } from '../utils/token';
 
 const api = axios.create({
@@ -27,14 +27,19 @@ async function refreshAccessToken() {
       })
       .then((response) => {
         const nextAccessToken = response?.data?.access_token;
-        const nextRefreshToken = response?.data?.refresh_token;
+        const nextRefreshToken = response?.data?.refresh_token || response?.data?.refreshToken;
 
         if (!nextAccessToken || !nextRefreshToken) {
           throw new Error('Invalid refresh response payload');
         }
 
-        setAccessToken(nextAccessToken);
-        setRefreshToken(nextRefreshToken);
+        setAuthTokens(nextAccessToken, nextRefreshToken);
+        useAuthStore.setState((prev) => ({
+          ...prev,
+          accessToken: nextAccessToken,
+          refreshToken: nextRefreshToken,
+          isAuthenticated: true,
+        }));
         return nextAccessToken;
       })
       .finally(() => {
@@ -59,7 +64,25 @@ api.interceptors.response.use(
     const status = error?.response?.status;
     const originalConfig = error?.config || {};
 
-    if (status === 401 && !originalConfig.__skipAuthRefresh && !originalConfig.__isRetryRequest) {
+    if (status !== 401) {
+      return Promise.reject(error);
+    }
+
+    if (originalConfig.__skipAuthRefresh) {
+      // If refresh endpoint itself is unauthorized, current session is no longer valid.
+      if (String(originalConfig.url || '').includes('/auth/refresh')) {
+        clearAccessToken();
+        useAuthStore.setState({
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          isAuthenticated: false,
+        });
+      }
+      return Promise.reject(error);
+    }
+
+    if (!originalConfig.__isRetryRequest) {
       try {
         const newAccessToken = await refreshAccessToken();
         originalConfig.__isRetryRequest = true;
@@ -70,9 +93,13 @@ api.interceptors.response.use(
         return api(originalConfig);
       } catch {
         clearAccessToken();
+        useAuthStore.setState({
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          isAuthenticated: false,
+        });
       }
-    } else if (status === 401) {
-      clearAccessToken();
     }
 
     return Promise.reject(error);

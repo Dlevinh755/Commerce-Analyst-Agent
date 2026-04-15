@@ -2,7 +2,13 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authService } from '../services/authService';
 import useCartStore from './cartStore';
-import { clearAccessToken, setAccessToken, setRefreshToken } from '../utils/token';
+import {
+  clearAccessToken,
+  getRefreshToken,
+  setAccessToken,
+  setAuthTokens,
+  setRefreshToken,
+} from '../utils/token';
 
 function shouldLoadCart(user) {
   return String(user?.role || '').toLowerCase() === 'buyer';
@@ -24,13 +30,15 @@ const useAuthStore = create(
         set({ isLoading: true });
         try {
           const { data } = await authService.login(payload);
-          setAccessToken(data.access_token);
-          setRefreshToken(data.refresh_token);
+          const accessToken = data.access_token || data.accessToken;
+          const refreshToken = data.refresh_token || data.refreshToken;
+          setAuthTokens(accessToken, refreshToken);
           set({
             user: data.user,
-            accessToken: data.access_token,
-            refreshToken: data.refresh_token,
+            accessToken,
+            refreshToken,
             isAuthenticated: true,
+            isHydrated: true,
           });
           if (shouldLoadCart(data.user)) {
             await useCartStore.getState().fetchCart();
@@ -60,7 +68,7 @@ const useAuthStore = create(
       },
 
       logout: async () => {
-        const refreshToken = get().refreshToken;
+        const refreshToken = get().refreshToken || getRefreshToken();
         if (refreshToken) {
           try {
             await authService.logout({ refresh_token: refreshToken });
@@ -81,7 +89,7 @@ const useAuthStore = create(
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: (storeState) => (state) => {
         const token = state?.accessToken;
         const refreshToken = state?.refreshToken;
         if (token) {
@@ -94,7 +102,9 @@ const useAuthStore = create(
         } else {
           setRefreshToken(null);
         }
-        useAuthStore.setState({ isHydrated: true });
+
+        // Mark hydration complete even when there is no persisted auth payload.
+        storeState?.setHydrated?.();
       },
     }
   )

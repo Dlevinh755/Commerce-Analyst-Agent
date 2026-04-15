@@ -83,6 +83,26 @@ export function setRefreshToken(token) {
   syncPersistedAuthState({ refreshToken: token });
 }
 
+export function setAuthTokens(accessToken, refreshToken) {
+  if (accessToken) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  } else {
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+  }
+
+  if (refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  } else {
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  }
+
+  syncPersistedAuthState({
+    accessToken: accessToken || null,
+    refreshToken: refreshToken || null,
+    isAuthenticated: Boolean(accessToken && refreshToken),
+  });
+}
+
 export function clearAccessToken() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);

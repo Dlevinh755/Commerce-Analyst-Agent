@@ -163,7 +163,7 @@ def _sync_book_rating_stats(book_id: int) -> None:
         return
 
     url = f"{PRODUCT_SERVICE_URL}/books/internal/{book_id}/review-stats"
-    payload = {"rating_count": rating_count, "avg_rating": round(avg_rating, 2)}
+    payload = {"rating_count": rating_count, "rating_avg": round(avg_rating, 2)}
 
     try:
         with httpx.Client(timeout=_HTTP_TIMEOUT) as client:
@@ -243,7 +243,7 @@ def apply_seed_reviews(seed_data: dict) -> None:
         buyer_username = str(review_entry.get("buyer_username", "")).strip()
         seller_username = str(review_entry.get("seller_username", "")).strip()
         product_title = str(review_entry.get("product_title", "")).strip()
-        order_index = review_entry.get("order_index", 0)
+        seed_order_id = review_entry.get("order_id")
         rating = int(review_entry.get("rating", 3))
         comment = review_entry.get("comment")
 
@@ -266,13 +266,14 @@ def apply_seed_reviews(seed_data: dict) -> None:
             skipped += 1
             continue
 
-        # Resolve order_id from cached orders
+        # Resolve order_id: match by seed order_id, fallback to searching by book_id
         buyer_orders = buyer_orders_cache.get(buyer_username, [])
         order_id = None
-        if 0 <= order_index < len(buyer_orders):
-            order_id = buyer_orders[order_index].get("order_id")
-
-        # If can't resolve by index, find a delivered order containing this book
+        if seed_order_id is not None:
+            for order in buyer_orders:
+                if order.get("order_id") == seed_order_id:
+                    order_id = seed_order_id
+                    break
         if order_id is None:
             for order in buyer_orders:
                 status = str(order.get("status", "")).lower()

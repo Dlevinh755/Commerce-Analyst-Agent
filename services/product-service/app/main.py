@@ -121,6 +121,10 @@ def _apply_seed_products(seed_data: dict) -> None:
                     stock_quantity = int(entry.get("stock_quantity", 0))
                 except Exception:
                     stock_quantity = 0
+                try:
+                    purchase_count = int(entry.get("purchase_count", 0))
+                except Exception:
+                    purchase_count = 0
 
                 is_active = bool(entry.get("is_active", True))
                 is_hidden = bool(entry.get("is_hidden", False))
@@ -199,7 +203,7 @@ def _apply_seed_products(seed_data: dict) -> None:
                                 :price,
                                 :stock_quantity,
                                 :image_url,
-                                0,
+                                :purchase_count,
                                 0,
                                 0,
                                 :is_active,
@@ -217,6 +221,7 @@ def _apply_seed_products(seed_data: dict) -> None:
                             "price": price,
                             "stock_quantity": stock_quantity,
                             "image_url": image_url,
+                            "purchase_count": purchase_count,
                             "is_active": is_active,
                             "is_hidden": is_hidden,
                         },

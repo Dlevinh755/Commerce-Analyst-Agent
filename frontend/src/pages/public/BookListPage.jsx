@@ -25,9 +25,18 @@ export default function BookListPage() {
   const [searchText, setSearchText] = useState(searchFromUrl);
   const [appliedSearch, setAppliedSearch] = useState(searchFromUrl);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [minPurchased, setMinPurchased] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [page, setPage] = useState(1);
+
+  const sortByParamMap = {
+    newest: 'newest',
+    oldest: 'oldest',
+    'price-asc': 'price_asc',
+    'price-desc': 'price_desc',
+    'purchase-desc': 'purchase_desc',
+    'purchase-asc': 'purchase_asc',
+    'rating-desc': 'rating_desc',
+  };
 
   useEffect(() => {
     async function fetchCategories() {
@@ -75,9 +84,7 @@ export default function BookListPage() {
           params.category_id = selectedCategoryId;
         }
 
-        if (minPurchased !== 'all') {
-          params.min_purchase_count = Number(minPurchased);
-        }
+        params.sort_by = sortByParamMap[sortBy] || 'newest';
 
         const { data } = await bookService.list(params);
         const raw = Array.isArray(data) ? data : data?.items || [];
@@ -94,7 +101,7 @@ export default function BookListPage() {
     }
 
     fetchBooks();
-  }, [appliedSearch, page, selectedCategoryId, minPurchased]);
+  }, [appliedSearch, page, selectedCategoryId, sortBy]);
 
   useEffect(() => {
     setSearchText(searchFromUrl);
@@ -102,24 +109,11 @@ export default function BookListPage() {
     setPage(1);
   }, [searchFromUrl]);
 
-  const displayBooks = useMemo(() => {
-    let result = [...books];
-
-    if (sortBy === 'price-asc') {
-      result = result.sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'price-desc') {
-      result = result.sort((a, b) => b.price - a.price);
-    } else if (sortBy === 'rating-desc') {
-      result = result.sort((a, b) => b.rating - a.rating);
-    }
-
-    return result;
-  }, [books, sortBy]);
+  const displayBooks = books;
 
   const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
 
-  const onSearchSubmit = (event) => {
-    event.preventDefault();
+  const onSearchSubmit = () => {
     setAppliedSearch(searchText.trim());
     setPage(1);
   };
@@ -131,11 +125,6 @@ export default function BookListPage() {
 
   const onSortChange = (value) => {
     setSortBy(value);
-    setPage(1);
-  };
-
-  const onMinPurchasedChange = (value) => {
-    setMinPurchased(value);
     setPage(1);
   };
 
@@ -166,8 +155,6 @@ export default function BookListPage() {
           categories={categoryOptions}
           selectedCategory={selectedCategory}
           onCategoryChange={onCategoryChange}
-          minPurchased={minPurchased}
-          onMinPurchasedChange={onMinPurchasedChange}
           sortBy={sortBy}
           onSortChange={onSortChange}
         />

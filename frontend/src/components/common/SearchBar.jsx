@@ -1,6 +1,13 @@
 export default function SearchBar({ value, onChange, onSubmit, placeholder = 'Tìm sách...' }) {
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (typeof onSubmit === 'function') {
+      onSubmit(event);
+    }
+  };
+
   return (
-    <form onSubmit={onSubmit} className="flex w-full items-center gap-2 rounded-full bg-white p-1.5">
+    <form onSubmit={handleSubmit} className="flex w-full items-center gap-2 rounded-full bg-white p-1.5">
       <span className="pl-3 text-slate-400">
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="11" cy="11" r="7" />

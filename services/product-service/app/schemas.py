@@ -98,6 +98,10 @@ class IncrementBookPurchaseCountRequest(BaseModel):
     quantity: int = Field(..., ge=1)
 
 
+class BookVisibilityUpdateRequest(BaseModel):
+    is_hidden: bool
+
+
 class ImageUploadResponse(BaseModel):
     image_url: str
 

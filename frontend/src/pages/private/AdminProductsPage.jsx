@@ -4,6 +4,9 @@ import Toast from '../../components/common/Toast';
 import AdminSectionNav from '../../components/admin/AdminSectionNav';
 import { getErrorMessage } from '../../utils/errorMessage';
 
+const FALLBACK_COVER =
+  'https://images.unsplash.com/photo-1526243741027-444d633d7365?auto=format&fit=crop&w=300&q=60';
+
 export default function AdminProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +86,7 @@ export default function AdminProductsPage() {
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="px-3 py-2 text-left font-medium">ID</th>
+                <th className="px-3 py-2 text-left font-medium">Ảnh</th>
                 <th className="px-3 py-2 text-left font-medium">Tên sách</th>
                 <th className="px-3 py-2 text-left font-medium">Người bán</th>
                 <th className="px-3 py-2 text-left font-medium">Trạng thái</th>
@@ -94,7 +98,23 @@ export default function AdminProductsPage() {
                 <tr key={product.book_id}>
                   <td className="px-3 py-2">#{product.book_id}</td>
                   <td className="px-3 py-2">
-                    <p className="font-medium">{product.title}</p>
+                    <div className="h-16 w-12 overflow-hidden rounded border border-slate-200 bg-slate-100">
+                      {product.image_url ? (
+                        <img
+                          src={product.image_url}
+                          alt={product.title}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.onerror = null;
+                            event.currentTarget.src = FALLBACK_COVER;
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <p className="max-w-[240px] truncate font-medium">{product.title}</p>
                     <p className="text-xs text-slate-500">{product.author}</p>
                   </td>
                   <td className="px-3 py-2 text-xs">

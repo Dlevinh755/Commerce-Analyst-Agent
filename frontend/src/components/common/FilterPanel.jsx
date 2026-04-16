@@ -2,8 +2,6 @@ export default function FilterPanel({
   categories,
   selectedCategory,
   onCategoryChange,
-  minPurchased,
-  onMinPurchasedChange,
   sortBy,
   onSortChange,
 }) {
@@ -28,18 +26,12 @@ export default function FilterPanel({
       <label className="mb-2 mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-500">Sắp xếp theo</label>
       <select className="input py-2 text-sm" value={sortBy} onChange={(e) => onSortChange(e.target.value)}>
         <option value="newest">Mới nhất</option>
+        <option value="oldest">Cũ nhất</option>
         <option value="price-asc">Giá: Thấp đến cao</option>
         <option value="price-desc">Giá: Cao đến thấp</option>
+        <option value="purchase-desc">Đã mua: Nhiều đến ít</option>
+        <option value="purchase-asc">Đã mua: Ít đến nhiều</option>
         <option value="rating-desc">Đánh giá cao</option>
-      </select>
-
-      <label className="mb-2 mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-500">Số lượng đã mua</label>
-      <select className="input py-2 text-sm" value={minPurchased} onChange={(e) => onMinPurchasedChange(e.target.value)}>
-        <option value="all">Tất cả</option>
-        <option value="1">Từ 1 trở lên</option>
-        <option value="10">Từ 10 trở lên</option>
-        <option value="50">Từ 50 trở lên</option>
-        <option value="100">Từ 100 trở lên</option>
       </select>
     </aside>
   );

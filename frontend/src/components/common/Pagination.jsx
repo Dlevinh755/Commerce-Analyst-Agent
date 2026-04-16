@@ -2,12 +2,31 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null;
 
   const pages = [];
-  if (totalPages <= 4) {
-    for (let i = 1; i <= totalPages; i += 1) {
-      pages.push(i);
+  const addPage = (value) => {
+    if (pages[pages.length - 1] !== value) {
+      pages.push(value);
     }
-  } else {
-    pages.push(1, 2, 'ellipsis', totalPages - 1, totalPages);
+  };
+
+  addPage(1);
+
+  const windowStart = Math.max(2, currentPage - 1);
+  const windowEnd = Math.min(totalPages - 1, currentPage + 1);
+
+  if (windowStart > 2) {
+    addPage('ellipsis-left');
+  }
+
+  for (let page = windowStart; page <= windowEnd; page += 1) {
+    addPage(page);
+  }
+
+  if (windowEnd < totalPages - 1) {
+    addPage('ellipsis-right');
+  }
+
+  if (totalPages > 1) {
+    addPage(totalPages);
   }
 
   return (
@@ -22,9 +41,9 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
       </button>
 
       {pages.map((page) => {
-        if (page === 'ellipsis') {
+        if (String(page).startsWith('ellipsis')) {
           return (
-            <span key="ellipsis" className="px-1 text-slate-500">
+            <span key={page} className="px-1 text-slate-500">
               ...
             </span>
           );
@@ -40,6 +59,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
                 : 'border border-slate-300 text-slate-700'
             }`}
             onClick={() => onPageChange(page)}
+            aria-current={page === currentPage ? 'page' : undefined}
           >
             {page}
           </button>

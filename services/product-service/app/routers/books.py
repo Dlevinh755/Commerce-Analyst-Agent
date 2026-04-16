@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Query, status, HTTPException, UploadFile, File, Header
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 
 from ..db import get_db
 from ..models import Book
@@ -11,6 +12,7 @@ from ..schemas import (
     BookCreate,
     BookUpdate,
     AdminBookUpdate,
+    BookVisibilityUpdateRequest,
     BookResponse,
     BookDetailResponse,
     PaginatedBooksResponse,
@@ -27,6 +29,7 @@ router = APIRouter(prefix="/books", tags=["Books"])
 UPLOADS_DIR = Path("/app/uploads")
 PUBLIC_PRODUCTS_BASE_URL = os.getenv("PUBLIC_PRODUCTS_BASE_URL", "http://localhost/api/v1/products")
 INTERNAL_SERVICE_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "")
+MAX_IMAGE_UPLOAD_MB = int(os.getenv("MAX_IMAGE_UPLOAD_MB", "20"))
 
 
 @router.get("", response_model=PaginatedBooksResponse)
@@ -38,6 +41,7 @@ def list_books(
     min_price: float | None = Query(default=None, ge=0),
     max_price: float | None = Query(default=None, ge=0),
     min_purchase_count: int | None = Query(default=None, ge=0),
+    sort_by: str = Query(default="newest"),
     seller_id: int | None = Query(default=None),
     in_stock: bool | None = Query(default=None),
     page: int = Query(default=1, ge=1),
@@ -79,9 +83,21 @@ def list_books(
     elif in_stock is False:
         query = query.filter(Book.stock_quantity == 0)
 
+    sort_by_normalized = str(sort_by or "newest").strip().lower()
+    sort_column_map = {
+        "newest": Book.book_id.desc(),
+        "oldest": Book.book_id.asc(),
+        "price_asc": Book.price.asc(),
+        "price_desc": Book.price.desc(),
+        "purchase_desc": Book.purchase_count.desc(),
+        "purchase_asc": Book.purchase_count.asc(),
+        "rating_desc": Book.rating_avg.desc(),
+    }
+    order_by_clause = sort_column_map.get(sort_by_normalized, Book.book_id.desc())
+
     total = query.count()
     items = (
-        query.order_by(Book.book_id.desc())
+        query.order_by(order_by_clause, Book.book_id.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
@@ -159,7 +175,35 @@ def list_books_for_admin(
     }
 
 
-@router.get("/{book_id}", response_model=BookDetailResponse)
+@router.post("/upload-image", response_model=ImageUploadResponse)
+async def upload_book_image(
+    image: UploadFile = File(...),
+    payload: dict = Depends(require_roles("seller", "admin")),
+):
+    if not image.content_type or not image.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+    extension = Path(image.filename or "").suffix.lower() or ".jpg"
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+    if extension not in allowed_extensions:
+        raise HTTPException(status_code=400, detail="Unsupported image format")
+
+    filename = f"{uuid.uuid4().hex}{extension}"
+    output_path = UPLOADS_DIR / filename
+    content = await image.read()
+
+    max_size_bytes = MAX_IMAGE_UPLOAD_MB * 1024 * 1024
+    if len(content) > max_size_bytes:
+        raise HTTPException(status_code=413, detail=f"Image too large (max {MAX_IMAGE_UPLOAD_MB}MB)")
+
+    output_path.write_bytes(content)
+
+    return {"image_url": f"{PUBLIC_PRODUCTS_BASE_URL}/uploads/{filename}"}
+
+
+@router.get("/{book_id:int}", response_model=BookDetailResponse)
 def get_book(book_id: int, db: Session = Depends(get_db)):
     book = (
         db.query(Book)
@@ -200,7 +244,7 @@ def create_book(
     return book
 
 
-@router.patch("/{book_id}", response_model=BookResponse)
+@router.patch("/{book_id:int}", response_model=BookResponse)
 def update_book(
     book_id: int,
     data: BookUpdate,
@@ -236,7 +280,7 @@ def update_book(
     return book
 
 
-@router.patch("/admin/{book_id}", response_model=BookResponse)
+@router.patch("/admin/{book_id:int}", response_model=BookResponse)
 def update_book_as_admin(
     book_id: int,
     data: AdminBookUpdate,
@@ -277,7 +321,32 @@ def update_book_as_admin(
     return book
 
 
-@router.delete("/{book_id}", response_model=MessageResponse)
+@router.patch("/{book_id:int}/visibility", response_model=BookResponse)
+def update_book_visibility(
+    book_id: int,
+    data: BookVisibilityUpdateRequest,
+    db: Session = Depends(get_db),
+    payload: dict = Depends(require_roles("seller", "admin")),
+):
+    book = get_book_or_404(db, book_id)
+    requester_id = int(payload["sub"])
+    requester_role = payload["role"]
+
+    if requester_role != "admin" and book.seller_id != requester_id:
+        raise HTTPException(status_code=403, detail="You can only update your own books")
+
+    book.is_hidden = data.is_hidden
+    if data.is_hidden:
+        book.is_active = False
+    else:
+        book.is_active = True
+
+    db.commit()
+    db.refresh(book)
+    return book
+
+
+@router.delete("/{book_id:int}", response_model=MessageResponse)
 def delete_book(
     book_id: int,
     db: Session = Depends(get_db),
@@ -296,32 +365,30 @@ def delete_book(
     return {"message": "Book hidden successfully"}
 
 
-@router.post("/upload-image", response_model=ImageUploadResponse)
-async def upload_book_image(
-    image: UploadFile = File(...),
+@router.delete("/{book_id:int}/hard-delete", response_model=MessageResponse)
+def hard_delete_book(
+    book_id: int,
+    db: Session = Depends(get_db),
     payload: dict = Depends(require_roles("seller", "admin")),
 ):
-    if not image.content_type or not image.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are allowed")
+    book = get_book_or_404(db, book_id)
+    requester_id = int(payload["sub"])
+    requester_role = payload["role"]
 
-    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    if requester_role != "admin" and book.seller_id != requester_id:
+        raise HTTPException(status_code=403, detail="You can only delete your own books")
 
-    extension = Path(image.filename or "").suffix.lower() or ".jpg"
-    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
-    if extension not in allowed_extensions:
-        raise HTTPException(status_code=400, detail="Unsupported image format")
+    try:
+        db.delete(book)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Không thể xóa vĩnh viễn vì sản phẩm đã có dữ liệu liên quan (ví dụ đơn hàng). Hãy dùng Ẩn sản phẩm.",
+        )
 
-    filename = f"{uuid.uuid4().hex}{extension}"
-    output_path = UPLOADS_DIR / filename
-    content = await image.read()
-
-    max_size_bytes = 5 * 1024 * 1024
-    if len(content) > max_size_bytes:
-        raise HTTPException(status_code=400, detail="Image too large (max 5MB)")
-
-    output_path.write_bytes(content)
-
-    return {"image_url": f"{PUBLIC_PRODUCTS_BASE_URL}/uploads/{filename}"}
+    return {"message": "Book deleted successfully"}
 
 
 @router.get("/me/list", response_model=list[BookResponse])
@@ -339,7 +406,7 @@ def list_my_books(
     return query.order_by(Book.book_id.desc()).all()
 
 
-@router.patch("/internal/{book_id}/review-stats", response_model=BookResponse)
+@router.patch("/internal/{book_id:int}/review-stats", response_model=BookResponse)
 def update_review_stats_internal(
     book_id: int,
     data: UpdateBookReviewStatsRequest,
@@ -358,7 +425,7 @@ def update_review_stats_internal(
     return book
 
 
-@router.patch("/internal/{book_id}/purchase-count/increment", response_model=BookResponse)
+@router.patch("/internal/{book_id:int}/purchase-count/increment", response_model=BookResponse)
 def increment_purchase_count_internal(
     book_id: int,
     data: IncrementBookPurchaseCountRequest,

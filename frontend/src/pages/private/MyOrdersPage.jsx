@@ -254,7 +254,8 @@ export default function MyOrdersPage() {
             return (
               <div key={order.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 shadow-sm">
                 <div className="flex gap-3">
-                  <div className="relative flex w-24 flex-shrink-0 items-start gap-1">
+                  <div className="relative w-[7.75rem] flex-shrink-0">
+                    <div className="grid grid-cols-3 gap-1">
                     {previewItems.length
                       ? previewItems.map((item) => (
                           <BookThumb
@@ -264,6 +265,7 @@ export default function MyOrdersPage() {
                           />
                         ))
                       : null}
+                    </div>
                     {remainingItems > 0 ? (
                       <span className="absolute -bottom-1 right-0 rounded bg-brand-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
                         +{remainingItems} sản phẩm

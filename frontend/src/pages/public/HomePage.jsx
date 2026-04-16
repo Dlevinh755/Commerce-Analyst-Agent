@@ -27,8 +27,7 @@ export default function HomePage() {
     fetchFeatured();
   }, []);
 
-  const onSearchSubmit = (event) => {
-    event.preventDefault();
+  const onSearchSubmit = () => {
     navigate(`/books?search=${encodeURIComponent(searchText)}`);
   };
 

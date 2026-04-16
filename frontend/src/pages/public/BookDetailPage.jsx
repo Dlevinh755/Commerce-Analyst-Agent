@@ -6,6 +6,7 @@ import Toast from '../../components/common/Toast';
 import { bookService } from '../../services/bookService';
 import { bookReviewsApi } from '../../services/bookReviewsApi';
 import { normalizeBook } from '../../utils/bookMapper';
+import { formatCurrencyVND } from '../../utils/currency';
 
 export default function BookDetailPage() {
   const { id } = useParams();
@@ -39,7 +40,7 @@ export default function BookDetailPage() {
         setReviews(Array.isArray(reviewData?.items) ? reviewData.items : []);
       } catch {
         setBook(null);
-        setError('Book not found or API unavailable.');
+        setError('Không tìm thấy sách hoặc API chưa sẵn sàng.');
       } finally {
         setLoading(false);
       }
@@ -50,27 +51,27 @@ export default function BookDetailPage() {
 
   const onAddToCart = async () => {
     if (!isAuthenticated) {
-      setToast('Please login before adding items to cart.');
+      setToast('Vui lòng đăng nhập trước khi thêm vào giỏ hàng.');
       navigate('/login', {
-        state: { from: location, message: 'Please login before adding items to cart.' },
+        state: { from: location, message: 'Vui lòng đăng nhập trước khi thêm vào giỏ hàng.' },
       });
       return;
     }
 
     try {
       await addItem(book, 1);
-      setToast('Added to cart successfully.');
+      setToast('Đã thêm vào giỏ hàng thành công.');
     } catch (error) {
-      setToast(error?.response?.data?.detail || 'Could not add this book to your cart.');
+      setToast(error?.response?.data?.detail || 'Không thể thêm sách này vào giỏ hàng.');
     }
   };
 
   if (loading) {
-    return <section className="card">Loading book details...</section>;
+    return <section className="card">Đang tải chi tiết sách...</section>;
   }
 
   if (!book) {
-    return <section className="card text-slate-600">{error || 'Book not found.'}</section>;
+    return <section className="card text-slate-600">{error || 'Không tìm thấy sách.'}</section>;
   }
 
   return (
@@ -85,45 +86,45 @@ export default function BookDetailPage() {
             {book.category}
           </span>
           <h1 className="mt-3 text-3xl font-bold">{book.title}</h1>
-          <p className="mt-1 text-slate-500">by {book.author}</p>
+          <p className="mt-1 text-slate-500">Tác giả: {book.author}</p>
           <p className="mt-4 text-slate-700">{book.description}</p>
 
           <div className="mt-6 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm">
             <p>
-              <span className="font-medium">Price:</span> ${book.price}
+              <span className="font-medium">Giá:</span> {formatCurrencyVND(book.price)}
             </p>
             <p>
-              <span className="font-medium">Stock:</span> {book.stock}
+              <span className="font-medium">Kho:</span> {book.stock}
             </p>
             <p>
-              <span className="font-medium">Rating:</span> {Number(reviewSummary.avg_rating || book.rating || 0).toFixed(1)} ({reviewSummary.rating_count || book.ratingCount || 0})
+              <span className="font-medium">Đánh giá:</span> {Number(reviewSummary.avg_rating || book.rating || 0).toFixed(1)} ({reviewSummary.rating_count || book.ratingCount || 0})
             </p>
             <p>
-              <span className="font-medium">Purchased:</span> {book.purchaseCount || 0}
+              <span className="font-medium">Đã mua:</span> {book.purchaseCount || 0}
             </p>
             <p className="col-span-2">
-              <span className="font-medium">Seller:</span> {book.sellerDisplay}
+              <span className="font-medium">Người bán:</span> {book.sellerDisplay}
             </p>
           </div>
 
           <button type="button" className="btn-primary mt-6 w-full" onClick={onAddToCart}>
-            Add to Cart
+            Thêm vào giỏ
           </button>
         </div>
       </section>
       <section className="card">
-        <h2 className="text-lg font-semibold">Customer reviews</h2>
+        <h2 className="text-lg font-semibold">Đánh giá khách hàng</h2>
         {reviews.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">No reviews yet for this product.</p>
+          <p className="mt-3 text-sm text-slate-500">Sản phẩm này chưa có đánh giá.</p>
         ) : (
           <div className="mt-4 space-y-3">
             {reviews.map((review) => (
               <article key={review.review_id} className="rounded-lg border border-slate-200 p-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-amber-600">{'★'.repeat(Number(review.rating || 0))}</p>
-                  <p className="text-xs text-slate-500">Order #{review.order_id}</p>
+                  <p className="text-xs text-slate-500">Đơn hàng #{review.order_id}</p>
                 </div>
-                <p className="mt-2 text-sm text-slate-700">{review.comment || 'No comment provided.'}</p>
+                <p className="mt-2 text-sm text-slate-700">{review.comment || 'Không có nhận xét.'}</p>
               </article>
             ))}
           </div>

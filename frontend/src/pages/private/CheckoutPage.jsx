@@ -110,7 +110,7 @@ export default function CheckoutPage() {
 
         const { data } = await vnpayService.createPaymentUrl({
           order_id: String(numericOrderId),
-          amount: Math.max(1, Math.round((total || totalAmount) * 25000)),
+          amount: Math.max(1, Math.round((total || totalAmount) )),
           order_desc: `Thanh toan don hang ${numericOrderId}`,
           return_url: `${window.location.origin}/checkout/vnpay-return`,
           language: 'vn',

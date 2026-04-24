@@ -1,0 +1,100 @@
+2026-04-24 16:10:43 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:10:45 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:12:15 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:12:17 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:12:20 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:13:10 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:13:12 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:13:13 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:13:51 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:13:53 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:13:54 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:13:57 | app.agent.nodes.execute_sql | ERROR | SQL execution failed | session_id=admin-1777047229065-tnnm1o | error=[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or function parameter with name `dim_users`.`user_name` cannot be resolved. Did you mean one of the following? [`dim_users`.`username`, `dim_users`.`user_id`, `dim_users`.`full_name`, `dim_users`.`email`, `dim_users`.`role`]. SQLSTATE: 42703; line 1 pos 7 | sql=SELECT dim_users.user_name, COUNT(DISTINCT fact_sales.order_id) AS total_orders FROM fact_sales INNER JOIN dim_users ON fact_sales.seller_id = dim_users.user_id WHERE TO_TIMESTAMP(fact_sales.order_date / 1000) >= DATE_SUB(CURRENT_DATE(), 30) GROUP BY dim_users.user_name ORDER BY total_orders DESC LIMIT 10
+Traceback (most recent call last):
+  File "/app/app/agent/nodes/execute_sql.py", line 35, in execute_sql_node
+    df = db.query(state.validated_sql)
+  File "/app/app/db/databricks.py", line 26, in query
+    cursor.execute(sql_text)
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/telemetry/latency_logger.py", line 175, in wrapper
+    result = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/client.py", line 954, in execute
+    self.active_result_set = self.backend.execute_command(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 1029, in execute_command
+    execute_response, has_more_rows = self._handle_execute_response(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 1236, in _handle_execute_response
+    final_operation_state = self._wait_until_command_done(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 915, in _wait_until_command_done
+    self._check_command_not_in_error_or_closed_state(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 635, in _check_command_not_in_error_or_closed_state
+    raise ServerOperationError(
+databricks.sql.exc.ServerOperationError: [UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or function parameter with name `dim_users`.`user_name` cannot be resolved. Did you mean one of the following? [`dim_users`.`username`, `dim_users`.`user_id`, `dim_users`.`full_name`, `dim_users`.`email`, `dim_users`.`role`]. SQLSTATE: 42703; line 1 pos 7
+2026-04-24 16:13:59 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:14:42 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:14:44 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:14:45 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:14:48 | app.agent.nodes.execute_sql | ERROR | SQL execution failed | session_id=admin-1777047281121-gubarb | error=[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or function parameter with name `dim_users`.`shop_name` cannot be resolved. Did you mean one of the following? [`dim_users`.`full_name`, `dim_users`.`username`, `dim_users`.`role`, `dim_users`.`email`, `dim_users`.`user_id`]. SQLSTATE: 42703; line 1 pos 7 | sql=SELECT dim_users.shop_name, COUNT(DISTINCT fact_sales.order_id) AS orders FROM fact_sales INNER JOIN dim_users ON fact_sales.seller_id = dim_users.user_id WHERE YEAR(TO_TIMESTAMP(fact_sales.order_date / 1000)) = 2025 GROUP BY dim_users.shop_name ORDER BY orders DESC LIMIT 10
+Traceback (most recent call last):
+  File "/app/app/agent/nodes/execute_sql.py", line 35, in execute_sql_node
+    df = db.query(state.validated_sql)
+  File "/app/app/db/databricks.py", line 26, in query
+    cursor.execute(sql_text)
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/telemetry/latency_logger.py", line 175, in wrapper
+    result = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/client.py", line 954, in execute
+    self.active_result_set = self.backend.execute_command(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 1029, in execute_command
+    execute_response, has_more_rows = self._handle_execute_response(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 1236, in _handle_execute_response
+    final_operation_state = self._wait_until_command_done(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 915, in _wait_until_command_done
+    self._check_command_not_in_error_or_closed_state(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 635, in _check_command_not_in_error_or_closed_state
+    raise ServerOperationError(
+databricks.sql.exc.ServerOperationError: [UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or function parameter with name `dim_users`.`shop_name` cannot be resolved. Did you mean one of the following? [`dim_users`.`full_name`, `dim_users`.`username`, `dim_users`.`role`, `dim_users`.`email`, `dim_users`.`user_id`]. SQLSTATE: 42703; line 1 pos 7
+2026-04-24 16:14:50 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:16:44 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:16:46 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:16:47 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:18:01 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:18:03 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:18:04 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:18:07 | app.agent.nodes.execute_sql | ERROR | SQL execution failed | session_id=admin-1777047480052-x9elcg | error=[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or function parameter with name `dim_users`.`user_name` cannot be resolved. Did you mean one of the following? [`dim_users`.`username`, `dim_users`.`user_id`, `dim_users`.`full_name`, `dim_users`.`email`, `dim_users`.`role`]. SQLSTATE: 42703; line 1 pos 7 | sql=SELECT dim_users.user_name, SUM(fact_sales.line_total) AS total_revenue FROM fact_sales INNER JOIN dim_users ON fact_sales.seller_id = dim_users.user_id WHERE fact_sales.order_overall_status = 'completed' AND YEAR(TO_TIMESTAMP(fact_sales.order_date / 1000)) = 2025 GROUP BY dim_users.user_name ORDER BY total_revenue DESC LIMIT 10
+Traceback (most recent call last):
+  File "/app/app/agent/nodes/execute_sql.py", line 35, in execute_sql_node
+    df = db.query(state.validated_sql)
+  File "/app/app/db/databricks.py", line 26, in query
+    cursor.execute(sql_text)
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/telemetry/latency_logger.py", line 175, in wrapper
+    result = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/client.py", line 954, in execute
+    self.active_result_set = self.backend.execute_command(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 1029, in execute_command
+    execute_response, has_more_rows = self._handle_execute_response(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 1236, in _handle_execute_response
+    final_operation_state = self._wait_until_command_done(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 915, in _wait_until_command_done
+    self._check_command_not_in_error_or_closed_state(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 635, in _check_command_not_in_error_or_closed_state
+    raise ServerOperationError(
+databricks.sql.exc.ServerOperationError: [UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or function parameter with name `dim_users`.`user_name` cannot be resolved. Did you mean one of the following? [`dim_users`.`username`, `dim_users`.`user_id`, `dim_users`.`full_name`, `dim_users`.`email`, `dim_users`.`role`]. SQLSTATE: 42703; line 1 pos 7
+2026-04-24 16:18:09 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-04-24 16:18:12 | app.agent.nodes.execute_sql | ERROR | SQL execution failed | session_id=admin-1777047480052-x9elcg | error=[UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or function parameter with name `dim_users`.`user_name` cannot be resolved. Did you mean one of the following? [`dim_users`.`username`, `dim_users`.`user_id`, `dim_users`.`full_name`, `dim_users`.`email`, `dim_users`.`role`]. SQLSTATE: 42703; line 1 pos 7 | sql=SELECT dim_users.user_name, SUM(fact_sales.line_total) AS total_revenue FROM fact_sales INNER JOIN dim_users ON fact_sales.seller_id = dim_users.user_id WHERE fact_sales.order_overall_status = 'completed' AND YEAR(TO_TIMESTAMP(fact_sales.order_date / 1000)) = 2025 GROUP BY dim_users.user_name ORDER BY total_revenue DESC LIMIT 10
+Traceback (most recent call last):
+  File "/app/app/agent/nodes/execute_sql.py", line 35, in execute_sql_node
+    df = db.query(state.validated_sql)
+  File "/app/app/db/databricks.py", line 26, in query
+    cursor.execute(sql_text)
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/telemetry/latency_logger.py", line 175, in wrapper
+    result = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/client.py", line 954, in execute
+    self.active_result_set = self.backend.execute_command(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 1029, in execute_command
+    execute_response, has_more_rows = self._handle_execute_response(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 1236, in _handle_execute_response
+    final_operation_state = self._wait_until_command_done(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 915, in _wait_until_command_done
+    self._check_command_not_in_error_or_closed_state(
+  File "/usr/local/lib/python3.10/site-packages/databricks/sql/backend/thrift_backend.py", line 635, in _check_command_not_in_error_or_closed_state
+    raise ServerOperationError(
+databricks.sql.exc.ServerOperationError: [UNRESOLVED_COLUMN.WITH_SUGGESTION] A column, variable, or function parameter with name `dim_users`.`user_name` cannot be resolved. Did you mean one of the following? [`dim_users`.`username`, `dim_users`.`user_id`, `dim_users`.`full_name`, `dim_users`.`email`, `dim_users`.`role`]. SQLSTATE: 42703; line 1 pos 7
+2026-04-24 16:18:14 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.

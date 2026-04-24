@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import AdminSectionNav from '../../components/admin/AdminSectionNav';
+import AnalyticsChatPanel from '../../components/admin/AnalyticsChatPanel';
 
 export default function AdminDashboardPage() {
   return (
@@ -34,6 +35,8 @@ export default function AdminDashboardPage() {
           <p className="mt-2 text-sm text-slate-600">Update order statuses and monitor checkout flow.</p>
         </Link>
       </div>
+
+      <AnalyticsChatPanel />
     </section>
   );
 }

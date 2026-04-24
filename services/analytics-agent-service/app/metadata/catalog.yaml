@@ -1,0 +1,311 @@
+version: 1
+
+database:
+  name: bookshop_analytics
+  dialect: databricks_sql
+  description: Data warehouse phân tích hệ thống bán sách thương mại điện tử
+
+tables:
+
+  - name: dim_books
+    type: dimension
+    grain: one row per book
+    description: Thông tin sách đã enrich category, seller và rating hiện tại
+    primary_key:
+      - book_id
+
+    columns:
+      - name: book_id
+        type: int
+        description: ID sách
+
+      - name: title
+        type: string
+        description: Tên sách
+
+      - name: author
+        type: string
+        description: Tác giả
+
+      - name: price
+        type: double
+        description: Giá niêm yết hiện tại
+
+      - name: category_name
+        type: string
+        description: Tên thể loại sách
+
+      - name: seller_username
+        type: string
+        description: Username người bán
+
+      - name: rating_avg
+        type: double
+        description: Điểm rating trung bình hiện tại
+
+      - name: purchase_count
+        type: int
+        description: Tổng số lần đã mua
+
+  - name: dim_date
+    type: dimension
+    grain: one row per calendar date
+    description: Bảng thời gian phục vụ phân tích
+
+    primary_key:
+      - date
+
+    columns:
+      - name: date
+        type: date
+        description: Ngày lịch
+
+      - name: year
+        type: int
+        description: Năm
+
+      - name: month
+        type: int
+        description: Tháng
+
+      - name: day
+        type: int
+        description: Ngày trong tháng
+
+      - name: day_of_week
+        type: string
+        description: Thứ trong tuần
+
+      - name: quarter
+        type: int
+        description: Quý
+
+      - name: is_weekend
+        type: boolean
+        description: Có phải cuối tuần hay không
+
+  - name: dim_users
+    type: dimension
+    grain: one row per user
+    description: Thông tin người dùng hệ thống
+
+    primary_key:
+      - user_id
+
+    columns:
+      - name: user_id
+        type: int
+        description: ID người dùng
+
+      - name: username
+        type: string
+        description: Username
+
+      - name: full_name
+        type: string
+        description: Họ tên
+
+      - name: email
+        type: string
+        description: Email
+
+      - name: role
+        type: string
+        description: buyer, seller, admin
+
+      - name: is_active
+        type: boolean
+        description: Trạng thái hoạt động
+
+  - name: fact_cart
+    type: fact
+    grain: one row per cart item
+    description: Dữ liệu giỏ hàng
+
+    primary_key:
+      - cart_id
+
+    foreign_keys:
+      - buyer_id -> dim_users.user_id
+      - book_id -> dim_books.book_id
+
+    columns:
+      - name: cart_id
+        type: int
+        description: ID dòng giỏ hàng
+
+      - name: buyer_id
+        type: int
+        description: Người mua
+
+      - name: book_id
+        type: int
+        description: Sách được thêm
+
+      - name: quantity
+        type: int
+        description: Số lượng
+
+      - name: added_at
+        type: timestamp
+        description: Thời điểm thêm vào giỏ
+
+  - name: fact_reviews
+    type: fact_snapshot
+    grain: one row per book per snapshot date
+    description: Snapshot review/rating theo thời điểm
+
+    foreign_keys:
+      - book_id -> dim_books.book_id
+
+    columns:
+      - name: book_id
+        type: int
+        description: ID sách
+
+      - name: score
+        type: double
+        description: Điểm rating trung bình tại snapshot
+
+      - name: total_reviews_at_snapshot
+        type: int
+        description: Tổng số review tại snapshot
+
+      - name: snapshot_date
+        type: timestamp
+        description: Thời điểm snapshot
+
+  - name: fact_sales
+    type: fact
+    grain: one row per order item
+    description: Dữ liệu bán hàng chi tiết theo từng dòng sản phẩm
+
+    primary_key:
+      - order_item_id
+
+    foreign_keys:
+      - buyer_id -> dim_users.user_id
+      - seller_id -> dim_users.user_id
+      - book_id -> dim_books.book_id
+
+    columns:
+      - name: order_item_id
+        type: int
+        description: ID dòng đơn hàng
+
+      - name: order_id
+        type: int
+        description: ID đơn hàng
+
+      - name: buyer_id
+        type: int
+        description: Người mua
+
+      - name: seller_id
+        type: int
+        description: Người bán
+
+      - name: book_id
+        type: int
+        description: Sách được mua
+
+      - name: order_date
+        type: bigint
+        description: Ngày đặt hàng dạng Unix timestamp milliseconds.
+        semantic_type: unix_timestamp_milliseconds
+        conversion_note: >
+          Dùng TO_TIMESTAMP(order_date / 1000) để convert sang timestamp.
+          Dùng YEAR(TO_TIMESTAMP(order_date / 1000)) để lấy năm.
+          Dùng DATE(TO_TIMESTAMP(order_date / 1000)) để lấy ngày.
+          Không dùng CAST(order_date AS DATE).
+
+      - name: quantity
+        type: int
+        description: Số lượng mua
+
+      - name: unit_price
+        type: double
+        description: Giá tại thời điểm mua
+
+      - name: line_total
+        type: double
+        description: quantity * unit_price
+
+      - name: order_overall_status
+        type: string
+        description: pending, delivered, cancelled
+
+      - name: item_status
+        type: string
+        description: Trạng thái riêng của item
+
+      - name: payment_method
+        type: string
+        description: COD, VNPay, Momo...
+
+      - name: payment_status
+        type: string
+        description: Trạng thái thanh toán
+
+
+business_metrics:
+
+  - name: revenue
+    formula: SUM(line_total)
+    source_table: fact_sales
+    default_filter: order_overall_status = 'delivered'
+    description: Tổng doanh thu đã hoàn tất
+
+  - name: orders
+    formula: COUNT(DISTINCT order_id)
+    source_table: fact_sales
+    description: Tổng số đơn hàng
+
+  - name: items_sold
+    formula: SUM(quantity)
+    source_table: fact_sales
+    description: Tổng số lượng sách bán ra
+
+  - name: avg_order_value
+    formula: SUM(line_total) / COUNT(DISTINCT order_id)
+    source_table: fact_sales
+    description: Giá trị đơn trung bình
+
+  - name: cart_quantity
+    formula: SUM(quantity)
+    source_table: fact_cart
+    description: Tổng số lượng trong giỏ hàng
+
+
+query_rules:
+
+  preferred_fact_table_for_sales: fact_sales
+  preferred_date_column_for_sales: order_date
+  preferred_book_join_key: book_id
+  preferred_user_join_key: user_id
+
+  always_limit_non_aggregate: 1000
+
+  default_completed_status_values:
+    - delivered
+
+date_handling:
+  fact_sales:
+    raw_column: order_date
+    raw_type: bigint
+    verified_format: unix_milliseconds
+    warning: Không dùng CAST(order_date AS DATE) vì order_date là Unix timestamp milliseconds.
+    conversion_expression: TO_TIMESTAMP(order_date / 1000)
+    date_expression: DATE(TO_TIMESTAMP(order_date / 1000))
+    year_expression: YEAR(TO_TIMESTAMP(order_date / 1000))
+    month_expression: DATE_TRUNC('month', TO_TIMESTAMP(order_date / 1000))
+    day_expression: DATE(TO_TIMESTAMP(order_date / 1000))
+
+  forbidden_sql:
+    - INSERT
+    - UPDATE
+    - DELETE
+    - DROP
+    - ALTER
+    - TRUNCATE
+    - MERGE

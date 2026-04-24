@@ -95,6 +95,8 @@ services:
       - VNPAY_SERVICE_PORT=${VNPAY_SERVICE_PORT:-8005}
       - KAFKA_UI_HOST=${KAFKA_UI_HOST}
       - KAFKA_UI_PORT=${KAFKA_UI_PORT}
+      - ANALYTICS_AGENT_SERVICE_HOST=${ANALYTICS_AGENT_SERVICE_HOST}
+      - ANALYTICS_AGENT_SERVICE_PORT=${ANALYTICS_AGENT_SERVICE_PORT}
     networks:
       - default
       - commerce-network
@@ -259,6 +261,21 @@ services:
       - ./services/vnpay-service:/app
     depends_on:
       - postgres-db
+
+  analytics-agent:
+    build: ./services/analytics-agent-service
+    container_name: commerce-analytics-agent-service
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - ANALYTICS_AGENT_SERVICE_PORT=${ANALYTICS_AGENT_SERVICE_PORT:-8007}
+      - ANALYTICS_AGENT_ROOT_PATH=/api/v1/analytics
+      - DATABRICKS_URL=${DATABRICKS_URL}
+    ports:
+      - "${ANALYTICS_AGENT_SERVICE_PORT:-8007}:8000"
+    volumes:
+      - ./services/analytics-agent-service:/app
 
   frontend:
     build:

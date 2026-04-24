@@ -8,8 +8,8 @@ function createSessionId() {
 function formatPayload(payload) {
   if (!payload) return '';
   if (payload.final_answer) return payload.final_answer;
-  if (payload.message) return payload.message;
   if (payload.payload?.error) return payload.payload.error;
+  if (payload.message) return payload.message;
   return JSON.stringify(payload, null, 2);
 }
 
@@ -74,7 +74,7 @@ export default function AnalyticsChatPanel() {
           return {
             ...message,
             status: 'error',
-            content: payload.message || 'Streaming failed.',
+            content: formatPayload(payload) || 'Streaming failed.',
             events: nextEvents,
             meta: payload,
           };
@@ -162,7 +162,7 @@ export default function AnalyticsChatPanel() {
     source.onerror = () => {
       setMessages((prev) =>
         prev.map((message, index) => {
-          if (index !== prev.length - 1 || message.role !== 'assistant' || message.status === 'completed') {
+          if (index !== prev.length - 1 || message.role !== 'assistant' || message.status !== 'streaming') {
             return message;
           }
 

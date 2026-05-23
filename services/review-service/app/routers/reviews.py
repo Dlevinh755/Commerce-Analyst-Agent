@@ -3,10 +3,12 @@ from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from pymongo import DESCENDING
+from sqlalchemy import desc, func
+from sqlalchemy.orm import Session
 
 from ..common.auth_jwt import require_roles
-from ..db import reviews_collection
+from ..db import get_db
+from ..models import Review
 from ..schemas import (
     ReviewListResponse,
     ReviewResponse,
@@ -25,16 +27,16 @@ def utc_now_naive() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _serialize_review(document: dict) -> dict:
+def _serialize_review(review: Review) -> dict:
     return {
-        "review_id": str(document.get("_id")),
-        "order_id": int(document["order_id"]),
-        "book_id": int(document["book_id"]),
-        "buyer_id": int(document["buyer_id"]),
-        "rating": int(document["rating"]),
-        "comment": document.get("comment"),
-        "created_at": document["created_at"],
-        "updated_at": document["updated_at"],
+        "review_id": str(review.review_id),
+        "order_id": int(review.order_id),
+        "book_id": int(review.book_id),
+        "buyer_id": int(review.buyer_id),
+        "rating": int(review.rating),
+        "comment": review.comment,
+        "created_at": review.created_at,
+        "updated_at": review.updated_at,
     }
 
 
@@ -80,21 +82,14 @@ def _ensure_reviewable(order: dict, buyer_id: int, book_id: int) -> None:
         raise HTTPException(status_code=400, detail="This item is not eligible for review yet")
 
 
-async def _sync_book_rating_stats(book_id: int) -> None:
-    pipeline = [
-        {"$match": {"book_id": book_id}},
-        {
-            "$group": {
-                "_id": "$book_id",
-                "rating_count": {"$sum": 1},
-                "avg_rating": {"$avg": "$rating"},
-            }
-        },
-    ]
-    result = list(reviews_collection.aggregate(pipeline))
-
-    rating_count = int(result[0]["rating_count"]) if result else 0
-    avg_rating = float(result[0]["avg_rating"]) if result else 0.0
+async def _sync_book_rating_stats(book_id: int, db: Session) -> None:
+    rating_count, avg_rating = (
+        db.query(func.count(Review.review_id), func.avg(Review.rating))
+        .filter(Review.book_id == book_id)
+        .one()
+    )
+    rating_count = int(rating_count or 0)
+    avg_rating = float(avg_rating or 0.0)
 
     if not INTERNAL_SERVICE_SECRET:
         return
@@ -117,47 +112,41 @@ def list_reviews_by_book(
     book_id: int,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=100),
+    db: Session = Depends(get_db),
 ):
-    query = {"book_id": book_id}
-    total = reviews_collection.count_documents(query)
-
-    documents = list(
-        reviews_collection.find(query)
-        .sort("created_at", DESCENDING)
-        .skip((page - 1) * page_size)
+    total = db.query(Review).filter(Review.book_id == book_id).count()
+    reviews = (
+        db.query(Review)
+        .filter(Review.book_id == book_id)
+        .order_by(desc(Review.created_at))
+        .offset((page - 1) * page_size)
         .limit(page_size)
+        .all()
     )
 
     return {
         "page": page,
         "page_size": page_size,
         "total": total,
-        "items": [_serialize_review(item) for item in documents],
+        "items": [_serialize_review(item) for item in reviews],
     }
 
 
 @router.get("/books/{book_id}/summary", response_model=ReviewSummaryResponse)
-def get_review_summary(book_id: int):
-    pipeline = [
-        {"$match": {"book_id": book_id}},
-        {
-            "$group": {
-                "_id": "$book_id",
-                "rating_count": {"$sum": 1},
-                "avg_rating": {"$avg": "$rating"},
-            }
-        },
-    ]
-    result = list(reviews_collection.aggregate(pipeline))
+def get_review_summary(book_id: int, db: Session = Depends(get_db)):
+    rating_count, avg_rating = (
+        db.query(func.count(Review.review_id), func.avg(Review.rating))
+        .filter(Review.book_id == book_id)
+        .one()
+    )
 
-    if not result:
+    if not rating_count:
         return {"book_id": book_id, "rating_count": 0, "avg_rating": 0.0}
 
-    item = result[0]
     return {
         "book_id": book_id,
-        "rating_count": int(item["rating_count"]),
-        "avg_rating": round(float(item["avg_rating"]), 2),
+        "rating_count": int(rating_count),
+        "avg_rating": round(float(avg_rating or 0.0), 2),
     }
 
 
@@ -165,12 +154,16 @@ def get_review_summary(book_id: int):
 def list_my_reviews_in_order(
     order_id: int,
     payload: dict = Depends(require_roles("buyer")),
+    db: Session = Depends(get_db),
 ):
     buyer_id = int(payload["sub"])
-    documents = list(
-        reviews_collection.find({"order_id": order_id, "buyer_id": buyer_id}).sort("created_at", DESCENDING)
+    reviews = (
+        db.query(Review)
+        .filter(Review.order_id == order_id, Review.buyer_id == buyer_id)
+        .order_by(desc(Review.created_at))
+        .all()
     )
-    return [_serialize_review(item) for item in documents]
+    return [_serialize_review(item) for item in reviews]
 
 
 @router.post("", response_model=ReviewResponse, status_code=status.HTTP_201_CREATED)
@@ -178,6 +171,7 @@ async def upsert_review(
     data: UpsertReviewRequest,
     authorization: str = Header(default=""),
     payload: dict = Depends(require_roles("buyer")),
+    db: Session = Depends(get_db),
 ):
     buyer_id = int(payload["sub"])
     token = authorization.replace("Bearer", "").strip()
@@ -188,35 +182,35 @@ async def upsert_review(
     _ensure_reviewable(order, buyer_id, data.book_id)
 
     now = utc_now_naive()
-    existing = reviews_collection.find_one(
-        {"buyer_id": buyer_id, "order_id": data.order_id, "book_id": data.book_id}
+    existing = (
+        db.query(Review)
+        .filter(
+            Review.buyer_id == buyer_id,
+            Review.order_id == data.order_id,
+            Review.book_id == data.book_id,
+        )
+        .one_or_none()
     )
 
     if existing:
-        reviews_collection.update_one(
-            {"_id": existing["_id"]},
-            {
-                "$set": {
-                    "rating": data.rating,
-                    "comment": data.comment.strip() if data.comment else None,
-                    "updated_at": now,
-                }
-            },
-        )
-        document = reviews_collection.find_one({"_id": existing["_id"]})
+        existing.rating = data.rating
+        existing.comment = data.comment.strip() if data.comment else None
+        existing.updated_at = now
+        review = existing
     else:
-        insert_result = reviews_collection.insert_one(
-            {
-                "buyer_id": buyer_id,
-                "order_id": data.order_id,
-                "book_id": data.book_id,
-                "rating": data.rating,
-                "comment": data.comment.strip() if data.comment else None,
-                "created_at": now,
-                "updated_at": now,
-            }
+        review = Review(
+            buyer_id=buyer_id,
+            order_id=data.order_id,
+            book_id=data.book_id,
+            rating=data.rating,
+            comment=data.comment.strip() if data.comment else None,
+            created_at=now,
+            updated_at=now,
         )
-        document = reviews_collection.find_one({"_id": insert_result.inserted_id})
+        db.add(review)
 
-    await _sync_book_rating_stats(data.book_id)
-    return _serialize_review(document)
+    db.commit()
+    db.refresh(review)
+
+    await _sync_book_rating_stats(data.book_id, db)
+    return _serialize_review(review)

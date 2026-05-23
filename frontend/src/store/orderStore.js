@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { orderService } from '../services/orderService';
 import { paymentService } from '../services/paymentService';
+import { resolveMediaUrl } from '../utils/mediaUrl';
 
 const ORDER_LOG_PREFIX = '[orderStore]';
 const devLog = (...args) => {
@@ -15,8 +16,22 @@ function normalizeOrder(raw = {}) {
   const items = (raw.items || []).map((item) => ({
     id: item.id ?? item.order_item_id ?? item.book_id,
     order_item_id: item.order_item_id ?? item.id,
+    seller_order_id: item.seller_order_id ?? null,
+    seller_id: item.seller_id ?? item.book?.seller_id ?? null,
     book_id: item.book_id ?? item.book?.book_id,
-    title: item.title ?? item.book?.title ?? `Book #${item.book_id}`,
+    title: item.title ?? item.book?.title ?? `Sách #${item.book_id}`,
+    author: item.author ?? item.book?.author ?? null,
+    cover: resolveMediaUrl(
+      item.cover ??
+        item.image_url ??
+        item.image ??
+        item.thumbnail ??
+        item.book?.image_url ??
+        item.book?.cover ??
+        item.book?.image ??
+        item.book?.thumbnail ??
+        ''
+    ),
     status: item.status ?? null,
     price: Number(item.price ?? item.unit_price ?? 0),
     quantity: Number(item.quantity ?? 0),
@@ -198,7 +213,7 @@ const useOrderStore = create(
           console.error(ORDER_LOG_PREFIX, 'createOrderFromCart:error', error?.response?.status, error?.response?.data || error?.message);
           set({
             isLoading: false,
-            error: error?.response?.data?.detail || 'Could not create order.',
+            error: error?.response?.data?.detail || 'Không thể tạo đơn hàng.',
           });
           throw error;
         }

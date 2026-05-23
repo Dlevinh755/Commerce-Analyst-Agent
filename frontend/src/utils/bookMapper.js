@@ -1,8 +1,10 @@
+import { resolveMediaUrl } from './mediaUrl';
+
 export function normalizeBook(raw = {}) {
   const categoryName =
     typeof raw.category === 'string'
       ? raw.category
-      : raw.category?.name ?? raw.category_name ?? 'General';
+      : raw.category?.name ?? raw.category_name ?? 'Tong hop';
 
   const sellerId = Number(raw.seller_id ?? raw.sellerId ?? raw.seller?.id ?? 0);
   const sellerUsername =
@@ -14,22 +16,24 @@ export function normalizeBook(raw = {}) {
 
   return {
     id: raw.id ?? raw.book_id ?? raw.bookId,
-    title: raw.title ?? raw.name ?? 'Untitled Book',
-    author: raw.author ?? raw.author_name ?? 'Unknown Author',
+    title: raw.title ?? raw.name ?? 'Chua dat ten',
+    author: raw.author ?? raw.author_name ?? 'Khong ro tac gia',
     category: categoryName,
-    description: raw.description ?? 'No description available.',
-    cover:
-      raw.cover ??
-      raw.image ??
-      raw.thumbnail ??
-      'https://images.unsplash.com/photo-1526243741027-444d633d7365?auto=format&fit=crop&w=800&q=80',
+    description: raw.description ?? 'Chua co mo ta.',
+    cover: resolveMediaUrl(
+      raw.image_url ??
+        raw.cover ??
+        raw.image ??
+        raw.thumbnail ??
+        'https://images.unsplash.com/photo-1526243741027-444d633d7365?auto=format&fit=crop&w=800&q=80'
+    ),
     price: Number(raw.price ?? raw.unit_price ?? 0),
-    stock: Number(raw.stock ?? raw.quantity ?? 0),
+    stock: Number(raw.stock_quantity ?? raw.stock ?? raw.quantity ?? 0),
     rating: Number.isFinite(ratingAvg) ? ratingAvg : 0,
     ratingCount: Number.isFinite(ratingCount) ? ratingCount : 0,
     purchaseCount: Number.isFinite(purchaseCount) ? purchaseCount : 0,
     sellerId,
     sellerUsername,
-    sellerDisplay: sellerUsername || (sellerId ? `Seller #${sellerId}` : 'Unknown seller'),
+    sellerDisplay: sellerUsername || (sellerId ? `Nguoi ban #${sellerId}` : 'Khong ro nguoi ban'),
   };
 }

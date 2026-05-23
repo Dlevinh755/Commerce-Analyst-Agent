@@ -16,17 +16,6 @@ services:
       timeout: 5s
       retries: 5
 
-  mongo-db:
-    image: mongo:6.0
-    container_name: commerce-mongo
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS}
-    volumes:
-      - mongo_data:/data/db
-    ports:
-      - "${MONGO_PORT:-27017}:27017"
-
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     container_name: commerce-kafka
@@ -59,16 +48,6 @@ services:
       KAFKA_CLUSTERS_0_NAME: local_kraft
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
 
-  databrick-mock:
-    build: ./mock-databrick
-    container_name: commerce-databricks-mock
-    ports:
-      - "${DATABRICKS_MOCK_PORT:-8081}:8081"
-    volumes:
-      - .:/app
-      - ./data:/app/data 
-    environment:
-      - PYTHONUNBUFFERED=1
 
   gateway:
     build: ./gateway
@@ -89,6 +68,8 @@ services:
       - ORDER_SERVICE_PORT=${ORDER_SERVICE_PORT}
       - PAYMENT_SERVICE_HOST=payment_service
       - PAYMENT_SERVICE_PORT=${PAYMENT_SERVICE_PORT}
+      - PAYOUT_SERVICE_HOST=payout_service
+      - PAYOUT_SERVICE_PORT=${PAYOUT_SERVICE_PORT:-8008}
       - REVIEW_SERVICE_HOST=review_service
       - REVIEW_SERVICE_PORT=${REVIEW_SERVICE_PORT:-8006}
       - VNPAY_SERVICE_HOST=vnpay_service
@@ -114,10 +95,6 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
-      - AUTH_ADMIN_USERNAME=${AUTH_ADMIN_USERNAME:-}
-      - AUTH_ADMIN_PASSWORD=${AUTH_ADMIN_PASSWORD:-}
-      - AUTH_ADMIN_EMAIL=${AUTH_ADMIN_EMAIL:-}
-      - AUTH_ADMIN_FULL_NAME=${AUTH_ADMIN_FULL_NAME:-System Admin}
       - DEV_AUTO_SEED=true
       - DEV_SEED_FILE=/app/dev-seeds.json
     volumes:
@@ -143,8 +120,7 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
-      - PUBLIC_PRODUCTS_BASE_URL=${PUBLIC_PRODUCTS_BASE_URL:-http://localhost/api/v1/products}
-      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-me-internal-secret}
+      - PUBLIC_PRODUCTS_BASE_URL=${PUBLIC_PRODUCTS_BASE_URL:-/api/v1/products}
       - DEV_AUTO_SEED=true
       - DEV_SEED_FILE=/app/dev-seeds.json
     ports:
@@ -191,15 +167,14 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - DEV_AUTO_SEED=true
-      - DEV_SEED_FILE=/app/dev-seeds.json
+      - DEV_SEED_FILE=/seed/dev-seeds.json
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - PRODUCT_SERVICE_URL=http://product-service:8001
-      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-me-internal-secret}
     ports:
       - "${ORDER_SERVICE_PORT:-8003}:8003"
     volumes:
-      - .:/services/order-service
-      - ./dev-seeds.json:/app/dev-seeds.json:ro
+      - ./services/order-service:/app
+      - ./dev-seeds.json:/seed/dev-seeds.json:ro
     depends_on:
       product-service:
         condition: service_healthy
@@ -212,11 +187,25 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
-      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-me-internal-secret}
     ports:
       - "${PAYMENT_SERVICE_PORT:-8004}:8004"
     volumes:
       - ./services/payment-service:/app
+    depends_on:
+      - postgres-db
+
+  payout_service:
+    build: ./services/payout-service
+    container_name: commerce-payout-service
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+    ports:
+      - "${PAYOUT_SERVICE_PORT:-8008}:8008"
+    volumes:
+      - ./services/payout-service:/app
     depends_on:
       - postgres-db
 
@@ -227,18 +216,13 @@ services:
     env_file:
       - .env
     environment:
-      - MONGO_USER=${MONGO_USER}
-      - MONGO_PASS=${MONGO_PASS}
-      - MONGO_HOST=mongo-db
-      - MONGO_PORT=27017
-      - MONGO_DB_NAME=review_db
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - ORDER_SERVICE_URL=http://order_service:8003
       - PRODUCT_SERVICE_URL=http://product-service:8001
-      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-me-internal-secret}
     ports:
       - "${REVIEW_SERVICE_PORT:-8006}:8006"
     depends_on:
-      - mongo-db
+      - postgres-db
       - order_service
       - product-service
 
@@ -250,10 +234,7 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
-      - VNPAY_RETURN_URL=https://bookstore.ailab.engineer/checkout/vnpay-return
-      - VNPAY_IPN_URL=https://payment.ailab.engineer/api/v1/vnpay/payment_ipn
       - PAYMENT_SERVICE_URL=http://payment_service:8004
-      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-me-internal-secret}
       - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,pay.bookstore.ailab.engineer,bookstore.ailab.engineer
     ports:
       - "${VNPAY_SERVICE_PORT:-8005}:8005"
@@ -269,9 +250,7 @@ services:
     env_file:
       - .env
     environment:
-      - ANALYTICS_AGENT_SERVICE_PORT=${ANALYTICS_AGENT_SERVICE_PORT:-8007}
       - ANALYTICS_AGENT_ROOT_PATH=/api/v1/analytics
-      - DATABRICKS_URL=${DATABRICKS_URL}
     ports:
       - "${ANALYTICS_AGENT_SERVICE_PORT:-8007}:8000"
     volumes:
@@ -304,20 +283,8 @@ services:
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
   
-  paymenttunnel:
-    image: cloudflare/cloudflared:latest
-    container_name: commerce-payment-tunnel
-    restart: unless-stopped
-    # Thay vì dùng --token, ta trỏ tới file config
-    command: tunnel --config /etc/cloudflared/cloudflare-payment.yml run
-    volumes:
-      - ./config:/etc/cloudflared:ro
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARED_PAYMENT_TUNNEL_TOKEN}
-      - TUNNEL_TRANSPORT_PROTOCOL=http2 # Ép sử dụng TCP để ổn định hơn UDP/QUIC
 volumes:
   postgres_data:
-  mongo_data:
   kafka_data:
 networks:
   commerce-network:

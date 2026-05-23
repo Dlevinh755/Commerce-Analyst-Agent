@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { sellerProductService } from '../../services/sellerProductService';
 import { getErrorMessage } from '../../utils/errorMessage';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 
 const defaultForm = {
   title: '',
@@ -12,16 +13,34 @@ const defaultForm = {
   category_name: '',
 };
 
+function formatInitialPrice(value) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  const numberValue = Number(String(value).trim());
+  if (Number.isFinite(numberValue)) {
+    return String(Math.round(numberValue));
+  }
+
+  return String(value);
+}
+
+function parseVndPriceInput(value) {
+  const digitsOnly = String(value || '').replace(/[^\d]/g, '');
+  if (!digitsOnly) {
+    return NaN;
+  }
+  return Number(digitsOnly);
+}
+
 function normalizeInitialValues(initialValues = {}) {
   return {
     ...defaultForm,
     ...initialValues,
     category_name:
       initialValues.category?.name ?? initialValues.category_name ?? initialValues.categoryName ?? '',
-    price:
-      initialValues.price === null || initialValues.price === undefined
-        ? ''
-        : String(initialValues.price),
+    price: formatInitialPrice(initialValues.price),
     stock_quantity:
       initialValues.stock_quantity === null || initialValues.stock_quantity === undefined
         ? ''
@@ -69,25 +88,25 @@ export default function SellerProductForm({
     const payload = {
       title: form.title.trim(),
       author: form.author.trim(),
-      price: Number(form.price),
+      price: parseVndPriceInput(form.price),
       stock_quantity: Number(form.stock_quantity),
       description: form.description.trim() || null,
-      image_url: form.image_url.trim() || null,
+      image_url: resolveMediaUrl(form.image_url) || null,
       category_name: form.category_name.trim() || null,
     };
 
     if (!payload.title || !payload.author) {
-      setError('Title and author are required.');
+      setError('Tên sách và tác giả là bắt buộc.');
       return;
     }
 
-    if (Number.isNaN(payload.price) || payload.price < 0) {
-      setError('Price must be a valid number >= 0.');
+    if (!Number.isFinite(payload.price) || payload.price < 0) {
+      setError('Giá phải là số tiền VND hợp lệ lớn hơn hoặc bằng 0.');
       return;
     }
 
     if (!Number.isInteger(payload.stock_quantity) || payload.stock_quantity < 0) {
-      setError('Stock quantity must be an integer >= 0.');
+      setError('Số lượng tồn kho phải là số nguyên lớn hơn hoặc bằng 0.');
       return;
     }
 
@@ -99,7 +118,7 @@ export default function SellerProductForm({
       }
       await onSubmit(payload);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not save product.'));
+      setError(getErrorMessage(err, 'Không thể lưu sản phẩm.'));
     } finally {
       setUploadingImage(false);
     }
@@ -110,22 +129,21 @@ export default function SellerProductForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <input
           className="input sm:col-span-2"
-          placeholder="Book title"
+          placeholder="Tên sách"
           value={form.title}
           onChange={(event) => handleChange('title', event.target.value)}
         />
         <input
           className="input sm:col-span-2"
-          placeholder="Author"
+          placeholder="Tác giả"
           value={form.author}
           onChange={(event) => handleChange('author', event.target.value)}
         />
         <input
           className="input"
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="Price"
+          type="text"
+          inputMode="numeric"
+          placeholder="Giá (vd: 100000 hoặc 100.000)"
           value={form.price}
           onChange={(event) => handleChange('price', event.target.value)}
         />
@@ -134,13 +152,13 @@ export default function SellerProductForm({
           type="number"
           min="0"
           step="1"
-          placeholder="Stock quantity"
+          placeholder="Số lượng tồn kho"
           value={form.stock_quantity}
           onChange={(event) => handleChange('stock_quantity', event.target.value)}
         />
         <input
           className="input"
-          placeholder="Category name (e.g. Software, Data)"
+          placeholder="Tên danh mục (vd: Tiểu thuyết, Kinh tế)"
           list="seller-category-options"
           value={form.category_name}
           onChange={(event) => handleChange('category_name', event.target.value)}
@@ -152,7 +170,7 @@ export default function SellerProductForm({
         </datalist>
         <input
           className="input"
-          placeholder="Current image URL"
+          placeholder="URL ảnh hiện tại"
           value={form.image_url}
           onChange={(event) => handleChange('image_url', event.target.value)}
         />
@@ -163,18 +181,18 @@ export default function SellerProductForm({
           onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
         />
         {selectedFile ? (
-          <p className="sm:col-span-2 text-xs text-slate-600">Selected image: {selectedFile.name}</p>
+          <p className="sm:col-span-2 text-xs text-slate-600">Ảnh đã chọn: {selectedFile.name}</p>
         ) : null}
         {form.image_url ? (
           <img
-            src={form.image_url}
-            alt="Current cover"
+            src={resolveMediaUrl(form.image_url)}
+            alt="Ảnh bìa hiện tại"
             className="sm:col-span-2 h-48 w-full rounded-lg border border-slate-200 object-cover"
           />
         ) : null}
         <textarea
           className="input sm:col-span-2 min-h-28"
-          placeholder="Description (optional)"
+          placeholder="Mô tả (tùy chọn)"
           value={form.description}
           onChange={(event) => handleChange('description', event.target.value)}
         />
@@ -183,7 +201,7 @@ export default function SellerProductForm({
       {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
 
       <button className="btn-primary" type="submit" disabled={!canSubmit || submitting || uploadingImage}>
-        {submitting || uploadingImage ? 'Saving...' : submitText}
+        {submitting || uploadingImage ? 'Đang lưu...' : submitText}
       </button>
     </form>
   );

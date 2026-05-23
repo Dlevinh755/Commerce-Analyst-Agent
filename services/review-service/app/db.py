@@ -1,28 +1,21 @@
 import os
 
-from pymongo import ASCENDING, DESCENDING, MongoClient
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-MONGO_USER = os.getenv("MONGO_USER", "admin")
-MONGO_PASS = os.getenv("MONGO_PASS", "password123")
-MONGO_HOST = os.getenv("MONGO_HOST", "mongo-db")
-MONGO_PORT = int(os.getenv("MONGO_PORT", "27017"))
-MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "review_db")
+load_dotenv()
 
-MONGO_URI = os.getenv(
-    "MONGO_URI",
-    f"mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}",
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-_client = MongoClient(MONGO_URI)
-_db = _client[MONGO_DB_NAME]
-reviews_collection = _db["reviews"]
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 
-def ensure_indexes() -> None:
-    reviews_collection.create_index(
-        [("buyer_id", ASCENDING), ("order_id", ASCENDING), ("book_id", ASCENDING)],
-        unique=True,
-        name="uq_buyer_order_book_review",
-    )
-    reviews_collection.create_index([("book_id", ASCENDING), ("created_at", DESCENDING)], name="idx_book_created_at")
-    reviews_collection.create_index([("order_id", ASCENDING), ("buyer_id", ASCENDING)], name="idx_order_buyer")
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

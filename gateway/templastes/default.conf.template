@@ -1,6 +1,7 @@
 server {
     listen ${GATEWAY_PORT};
     server_name ${DOMAIN_NAME};
+    client_max_body_size 25M;
 
     set $cors_origin "";
     if ($http_origin ~* ^http://(localhost|127\.0\.0\.1):(5173|5174|5175)$) {
@@ -83,6 +84,15 @@ server {
         rewrite ^/api/v1/payments$ /payments break;
         rewrite ^/api/v1/payments/(.*)$ /payments/$1 break;
         proxy_pass $payment_upstream;
+    }
+
+    # Điều hướng Payout Service (FastAPI)
+    # Client gọi: /api/v1/payouts/... -> payout-service nhận: /payouts/...
+    location /api/v1/payouts {
+        set $payout_upstream http://${PAYOUT_SERVICE_HOST}:${PAYOUT_SERVICE_PORT};
+        rewrite ^/api/v1/payouts$ /payouts break;
+        rewrite ^/api/v1/payouts/(.*)$ /payouts/$1 break;
+        proxy_pass $payout_upstream;
     }
 
     # Điều hướng Review Service (FastAPI)

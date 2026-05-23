@@ -1,10 +1,15 @@
 import hashlib
 import hmac
+import logging
 import urllib.parse
 
+logger = logging.getLogger("vnpay-service.ipn")
+
+
 class vnpay:
-    requestData = {}
-    responseData = {}
+    def __init__(self):
+        self.requestData = {}
+        self.responseData = {}
 
     def get_payment_url(self, vnpay_payment_url, secret_key):
         inputData = sorted(self.requestData.items())
@@ -42,8 +47,7 @@ class vnpay:
                     hasData = str(key) + '=' + urllib.parse.quote_plus(str(val))
         hashValue = self.__hmacsha512(secret_key, hasData)
 
-        print(
-            'Validate debug, HashData:' + hasData + "\n HashValue:" + hashValue + "\nInputHash:" + vnp_SecureHash)
+        logger.debug("validate_response hash_data=%s hash_value=%s input_hash=%s", hasData, hashValue, vnp_SecureHash)
 
         return vnp_SecureHash == hashValue
 

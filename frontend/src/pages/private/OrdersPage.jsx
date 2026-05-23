@@ -1,18 +1,107 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { orderService } from '../../services/orderService';
 import { getErrorMessage } from '../../utils/errorMessage';
 import Toast from '../../components/common/Toast';
 import useAuth from '../../hooks/useAuth';
+import { formatCurrencyVND } from '../../utils/currency';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
+
+const DATE_FILTERS = [
+  { value: 'all', label: 'Khoảng thời gian' },
+  { value: '7', label: '7 ngày gần đây' },
+  { value: '30', label: '30 ngày gần đây' },
+];
+
+function formatCurrency(value) {
+  return formatCurrencyVND(value);
+}
+
+function formatDate(value) {
+  if (!value) {
+    return '-';
+  }
+  return new Date(value).toLocaleString();
+}
+
+function normalizeStatus(value) {
+  return String(value || '').toLowerCase();
+}
+
+function formatOrderStatus(status) {
+  const normalized = normalizeStatus(status);
+  const labels = {
+    pending: 'Chờ xử lý',
+    processing: 'Đang xử lý',
+    ready_to_ship: 'Sẵn sàng giao',
+    shipped: 'Đã gửi',
+    partially_shipped: 'Gửi một phần',
+    delivered: 'Đã giao',
+    partially_delivered: 'Giao một phần',
+    completed: 'Hoàn tất',
+    cancelled: 'Đã hủy',
+    canceled: 'Đã hủy',
+  };
+  return labels[normalized] || normalized || 'Không xác định';
+}
+
+function getStatusBadgeClass(status) {
+  const normalized = normalizeStatus(status);
+  if (normalized === 'delivered' || normalized === 'completed') {
+    return 'bg-emerald-100 text-emerald-700';
+  }
+  if (normalized === 'shipped' || normalized === 'partially_shipped') {
+    return 'bg-sky-100 text-sky-700';
+  }
+  if (normalized === 'pending' || normalized === 'processing' || normalized === 'ready_to_ship') {
+    return 'bg-amber-100 text-amber-700';
+  }
+  if (normalized === 'cancelled' || normalized === 'canceled') {
+    return 'bg-rose-100 text-rose-700';
+  }
+  return 'bg-slate-100 text-slate-700';
+}
+
+function isTerminalOrderStatus(status) {
+  return ['cancelled', 'canceled', 'delivered', 'returned'].includes(normalizeStatus(status));
+}
+
+function getSellerItems(order, sellerId) {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  const numericSellerId = Number(sellerId || 0);
+  if (!numericSellerId) {
+    return items;
+  }
+  return items.filter((item) => Number(item?.seller_id ?? item?.book?.seller_id) === numericSellerId);
+}
+
+function getItemTitle(item) {
+  return item?.title || item?.book?.title || `Sản phẩm #${item?.book_id || item?.id || '-'}`;
+}
+
+function getItemImageUrl(item) {
+  return resolveMediaUrl(item?.image_url || item?.cover || item?.book?.image_url || item?.book?.cover || '');
+}
+
+function getItemUnitPrice(item) {
+  return Number(item?.unit_price ?? item?.price ?? 0);
+}
+
+function getItemLineTotal(item) {
+  return Number(item?.subtotal ?? item?.line_total ?? getItemUnitPrice(item) * Number(item?.quantity || 0));
+}
 
 export default function OrdersPage() {
   const user = useAuth((state) => state.user);
-  const currentSellerId = Number(user?.user_id || 0);
+  const currentSellerId = Number(user?.user_id ?? user?.id ?? user?.sub ?? 0);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [shippingOrderId, setShippingOrderId] = useState(null);
   const [reviewingOrderId, setReviewingOrderId] = useState(null);
   const [toast, setToast] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('all');
 
   const loadOrders = async () => {
     setLoading(true);
@@ -21,7 +110,7 @@ export default function OrdersPage() {
       const { data } = await orderService.listForSeller({ page: 1, page_size: 100 });
       setOrders(Array.isArray(data?.items) ? data.items : []);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not load seller orders.'));
+      setError(getErrorMessage(err, 'Không thể tải đơn hàng của người bán.'));
     } finally {
       setLoading(false);
     }
@@ -38,9 +127,9 @@ export default function OrdersPage() {
       setOrders((prev) =>
         prev.map((item) => (item.order_id === orderId ? { ...item, ...data } : item))
       );
-      setToast(`Order #${orderId} marked as shipped.`);
+      setToast(`Đơn hàng #${orderId} đã được đánh dấu đã gửi.`);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not update order status.'));
+      setToast(getErrorMessage(err, 'Không thể cập nhật trạng thái đơn hàng.'));
     } finally {
       setShippingOrderId(null);
     }
@@ -51,9 +140,9 @@ export default function OrdersPage() {
     try {
       const { data } = await orderService.approveCancellation(orderId);
       setOrders((prev) => prev.map((item) => (item.order_id === orderId ? { ...item, ...data } : item)));
-      setToast(`Cancellation approved for order #${orderId}.`);
+      setToast(`Đã duyệt hủy đơn hàng #${orderId}.`);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not approve cancellation request.'));
+      setToast(getErrorMessage(err, 'Không thể duyệt yêu cầu hủy đơn.'));
     } finally {
       setReviewingOrderId(null);
     }
@@ -64,123 +153,316 @@ export default function OrdersPage() {
     try {
       const { data } = await orderService.rejectCancellation(orderId);
       setOrders((prev) => prev.map((item) => (item.order_id === orderId ? { ...item, ...data } : item)));
-      setToast(`Cancellation rejected for order #${orderId}.`);
+      setToast(`Đã từ chối hủy đơn hàng #${orderId}.`);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not reject cancellation request.'));
+      setToast(getErrorMessage(err, 'Không thể từ chối yêu cầu hủy đơn.'));
     } finally {
       setReviewingOrderId(null);
     }
   };
 
+  const ordersWithSellerData = useMemo(
+    () =>
+      orders.map((order) => {
+        const mySellerOrder = Array.isArray(order.seller_orders)
+          ? order.seller_orders.find((item) => Number(item?.seller_id) === currentSellerId)
+          : null;
+        const mySellerStatus = normalizeStatus(mySellerOrder?.status || order.status);
+        const buyerId = order.buyer_id ? `#${order.buyer_id}` : null;
+        const buyerName = order.buyer_name || null;
+        const buyerLabel = buyerName || buyerId || '-';
+        return {
+          ...order,
+          buyerLabel,
+          mySellerOrder,
+          mySellerStatus,
+        };
+      }),
+    [orders, currentSellerId]
+  );
+
+  const filteredOrders = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const now = Date.now();
+    const rangeDays = Number(dateFilter);
+
+    return ordersWithSellerData.filter((order) => {
+      if (normalizedSearch) {
+        const orderIdText = String(order.order_id || '').toLowerCase();
+        const buyerText = String(order.buyerLabel || '').toLowerCase();
+        if (!orderIdText.includes(normalizedSearch) && !buyerText.includes(normalizedSearch)) {
+          return false;
+        }
+      }
+
+      if (statusFilter) {
+        const orderStatus = normalizeStatus(order.status);
+        const sellerStatus = normalizeStatus(order.mySellerStatus);
+        if (orderStatus !== statusFilter && sellerStatus !== statusFilter) {
+          return false;
+        }
+      }
+
+      if (rangeDays > 0) {
+        const orderTime = new Date(order.order_date).getTime();
+        if (Number.isFinite(orderTime)) {
+          const diffDays = (now - orderTime) / (1000 * 60 * 60 * 24);
+          if (diffDays > rangeDays) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  }, [ordersWithSellerData, searchTerm, statusFilter, dateFilter]);
+
+  const summaryCounts = useMemo(() => {
+    const counts = { pending: 0, shipped: 0, delivered: 0 };
+    ordersWithSellerData.forEach((order) => {
+      const status = normalizeStatus(order.mySellerStatus || order.status);
+      if (status === 'delivered' || status === 'completed') {
+        counts.delivered += 1;
+      } else if (status === 'shipped') {
+        counts.shipped += 1;
+      } else if (status) {
+        counts.pending += 1;
+      }
+    });
+    return counts;
+  }, [ordersWithSellerData]);
+
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Seller Orders</h1>
-          <p className="mt-1 text-slate-600">Set order status to shipped when package leaves your warehouse.</p>
+          <h1 className="text-2xl font-semibold">Đơn hàng người bán</h1>
+          <p className="mt-1 text-slate-600">Đánh dấu đã gửi khi đơn hàng rời kho của bạn.</p>
         </div>
         <button type="button" className="rounded-lg border px-3 py-1.5 text-sm" onClick={loadOrders}>
-          Refresh
+          Làm mới
         </button>
       </div>
 
-      {error ? <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
-
-      {loading ? (
-        <div className="card">Loading orders...</div>
-      ) : orders.length === 0 ? (
-        <div className="card text-slate-600">No orders found for your books.</div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Order</th>
-                <th className="px-4 py-3 text-left font-medium">Buyer</th>
-                <th className="px-4 py-3 text-left font-medium">Date</th>
-                <th className="px-4 py-3 text-left font-medium">Total</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {orders.map((order) => {
-                const status = String(order.status || '').toLowerCase();
-                const cancellationStatus = String(order.cancellation_status || 'none').toLowerCase();
-                const mySellerOrder = Array.isArray(order.seller_orders)
-                  ? order.seller_orders.find((item) => Number(item?.seller_id) === currentSellerId)
-                  : null;
-                const mySellerStatus = String(mySellerOrder?.status || '').toLowerCase();
-                const canMarkShipped = mySellerStatus
-                  ? ['pending', 'processing', 'ready_to_ship'].includes(mySellerStatus)
-                  : status === 'pending' || status === 'processing';
-                const hasPendingCancellation = status === 'shipped' && cancellationStatus === 'pending';
-                const myItemCount = Array.isArray(order.items)
-                  ? order.items.filter((item) => Number(item?.seller_id) === currentSellerId).length
-                  : 0;
-                return (
-                  <tr key={order.order_id}>
-                    <td className="px-4 py-3 font-medium">#{order.order_id}</td>
-                    <td className="px-4 py-3">{order.buyer_id}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {order.order_date ? new Date(order.order_date).toLocaleString() : '-'}
-                    </td>
-                    <td className="px-4 py-3">${Number(order.total_amount || 0).toFixed(2)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
-                          order:{order.status}
-                        </span>
-                        <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-700">
-                          my-items:{mySellerOrder?.status || 'n/a'} ({myItemCount})
-                        </span>
-                        {cancellationStatus !== 'none' ? (
-                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
-                            cancel:{cancellationStatus}
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {hasPendingCancellation ? (
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-medium text-emerald-700"
-                            onClick={() => onApproveCancellation(order.order_id)}
-                            disabled={reviewingOrderId === order.order_id}
-                          >
-                            {reviewingOrderId === order.order_id ? 'Updating...' : 'Approve cancel'}
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
-                            onClick={() => onRejectCancellation(order.order_id)}
-                            disabled={reviewingOrderId === order.order_id}
-                          >
-                            {reviewingOrderId === order.order_id ? 'Updating...' : 'Reject'}
-                          </button>
-                        </div>
-                      ) : canMarkShipped ? (
-                        <button
-                          type="button"
-                          className="btn-primary px-3 py-1.5 text-xs"
-                          onClick={() => onMarkShipped(order.order_id)}
-                          disabled={shippingOrderId === order.order_id}
-                        >
-                          {shippingOrderId === order.order_id ? 'Updating...' : 'Mark my items shipped'}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-slate-500">-</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      <section className="grid gap-3 md:grid-cols-3">
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">Đơn chờ xử lý</p>
+            <p className="text-lg font-semibold text-slate-900">{summaryCounts.pending}</p>
+          </div>
         </div>
-      )}
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 7h13l3 4v6a1 1 0 0 1-1 1h-2" />
+              <circle cx="7" cy="18" r="2" />
+              <circle cx="17" cy="18" r="2" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">Đơn đã gửi</p>
+            <p className="text-lg font-semibold text-slate-900">{summaryCounts.shipped}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M5 12l4 4L19 6" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">Đơn đã giao</p>
+            <p className="text-lg font-semibold text-slate-900">{summaryCounts.delivered}</p>
+          </div>
+        </div>
+      </section>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+          <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3" />
+            </svg>
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              className="w-full bg-transparent text-sm text-slate-700 outline-none"
+              placeholder="Tìm mã đơn hoặc tên người mua"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="h-9 w-44 shrink-0 rounded-lg border border-slate-300 px-3 text-slate-900 outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="">Trạng thái đơn</option>
+            <option value="pending">Chờ xử lý</option>
+            <option value="processing">Đang xử lý</option>
+            <option value="shipped">Đã gửi</option>
+            <option value="partially_shipped">Gửi một phần</option>
+            <option value="delivered">Đã giao</option>
+            <option value="cancelled">Đã hủy</option>
+          </select>
+          <select
+            value={dateFilter}
+            onChange={(event) => setDateFilter(event.target.value)}
+            className="h-9 w-44 shrink-0 rounded-lg border border-slate-300 px-3 text-slate-900 outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            {DATE_FILTERS.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {error ? <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
+
+        {loading ? (
+          <div className="card mt-3">Đang tải đơn hàng...</div>
+        ) : filteredOrders.length === 0 ? (
+          <div className="card mt-3 text-slate-600">Không tìm thấy đơn hàng nào cho sách của bạn.</div>
+        ) : (
+          <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="w-10 px-3 py-3 text-left font-medium">
+                    <input type="checkbox" className="h-4 w-4 rounded border-slate-300" />
+                  </th>
+                  <th className="px-3 py-3 text-left font-medium">Mã đơn</th>
+                  <th className="px-3 py-3 text-left font-medium">Người mua</th>
+                  <th className="px-3 py-3 text-left font-medium">Ngày đặt</th>
+                  <th className="px-3 py-3 text-left font-medium">Sản phẩm cần gửi</th>
+                  <th className="px-3 py-3 text-left font-medium">Tổng tiền</th>
+                  <th className="px-3 py-3 text-left font-medium">Trạng thái đơn</th>
+                  <th className="px-3 py-3 text-left font-medium">Trạng thái mặt hàng</th>
+                  <th className="px-3 py-3 text-right font-medium">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredOrders.map((order) => {
+                  const status = normalizeStatus(order.status);
+                  const cancellationStatus = normalizeStatus(order.cancellation_status || 'none');
+                  const mySellerStatus = normalizeStatus(order.mySellerOrder?.status || order.status);
+                  const mySellerCancellationStatus = normalizeStatus(order.mySellerOrder?.cancellation_status || 'none');
+                  const canMarkShipped = !isTerminalOrderStatus(status) && (
+                    mySellerStatus
+                      ? ['pending', 'processing', 'ready_to_ship'].includes(mySellerStatus)
+                      : status === 'pending' || status === 'processing'
+                  ) && cancellationStatus !== 'pending';
+                  const hasPendingCancellation =
+                    ['shipped', 'partially_shipped'].includes(status) &&
+                    cancellationStatus === 'pending' &&
+                    mySellerCancellationStatus === 'pending';
+                  const sellerItems = getSellerItems(order, currentSellerId);
+                  const pendingItemCount = sellerItems.filter((item) => {
+                    const itemStatus = normalizeStatus(item?.status);
+                    return !itemStatus || ['pending', 'processing', 'ready_to_ship'].includes(itemStatus);
+                  }).length;
+                  const showPendingCount = pendingItemCount > 0 && canMarkShipped;
+                  return (
+                    <tr key={order.order_id}>
+                      <td className="px-3 py-3">
+                        <input type="checkbox" className="h-4 w-4 rounded border-slate-300" />
+                      </td>
+                      <td className="px-3 py-3 font-medium">#{order.order_id}</td>
+                      <td className="px-3 py-3">{order.buyerLabel}</td>
+                      <td className="px-3 py-3 text-slate-600">{formatDate(order.order_date)}</td>
+                      <td className="px-3 py-3">
+                        {sellerItems.length ? (
+                          <div className="min-w-[260px] space-y-2">
+                            {sellerItems.map((item) => {
+                              const imageUrl = getItemImageUrl(item);
+                              const itemStatus = normalizeStatus(item?.status || mySellerStatus || order.status);
+                              return (
+                                <div key={item.order_item_id || item.id || `${order.order_id}-${item.book_id}`} className="flex gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                                  <div className="h-12 w-9 flex-shrink-0 overflow-hidden rounded border border-slate-200 bg-white">
+                                    {imageUrl ? (
+                                      <img
+                                        src={imageUrl}
+                                        alt={getItemTitle(item)}
+                                        className="h-full w-full object-cover"
+                                        loading="lazy"
+                                      />
+                                    ) : null}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate font-medium text-slate-900">{getItemTitle(item)}</p>
+                                    <p className="text-xs text-slate-500">
+                                      SL: {Number(item?.quantity || 0)} • {formatCurrency(getItemLineTotal(item))}
+                                    </p>
+                                    <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${getStatusBadgeClass(itemStatus)}`}>
+                                      {formatOrderStatus(itemStatus || 'pending')}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">Không có sản phẩm của seller này</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">{formatCurrency(order.total_amount)}</td>
+                      <td className="px-3 py-3">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
+                          {formatOrderStatus(order.status || 'pending')}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(mySellerStatus)}`}>
+                          {formatOrderStatus(mySellerStatus || 'khong_xac_dinh')}{showPendingCount ? ` (${pendingItemCount})` : ''}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        {hasPendingCancellation ? (
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-medium text-emerald-700"
+                              onClick={() => onApproveCancellation(order.order_id)}
+                              disabled={reviewingOrderId === order.order_id}
+                            >
+                              {reviewingOrderId === order.order_id ? 'Đang cập nhật...' : 'Duyệt hủy'}
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
+                              onClick={() => onRejectCancellation(order.order_id)}
+                              disabled={reviewingOrderId === order.order_id}
+                            >
+                              {reviewingOrderId === order.order_id ? 'Đang cập nhật...' : 'Từ chối'}
+                            </button>
+                          </div>
+                        ) : canMarkShipped ? (
+                          <button
+                            type="button"
+                            className="btn-primary px-3 py-1.5 text-xs"
+                            onClick={() => onMarkShipped(order.order_id)}
+                            disabled={shippingOrderId === order.order_id}
+                          >
+                            {shippingOrderId === order.order_id ? 'Đang cập nhật...' : 'Đánh dấu đã gửi'}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <Toast message={toast} onClose={() => setToast('')} />
     </section>

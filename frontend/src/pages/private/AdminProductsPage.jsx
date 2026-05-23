@@ -3,6 +3,10 @@ import { sellerProductService } from '../../services/sellerProductService';
 import Toast from '../../components/common/Toast';
 import AdminSectionNav from '../../components/admin/AdminSectionNav';
 import { getErrorMessage } from '../../utils/errorMessage';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
+
+const FALLBACK_COVER =
+  'https://images.unsplash.com/photo-1526243741027-444d633d7365?auto=format&fit=crop&w=300&q=60';
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState([]);
@@ -18,7 +22,7 @@ export default function AdminProductsPage() {
       const { data } = await sellerProductService.listForAdmin({ page: 1, page_size: 100 });
       setProducts(Array.isArray(data?.items) ? data.items : []);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not load products.'));
+      setError(getErrorMessage(err, 'Không thể tải danh sách sản phẩm.'));
     } finally {
       setLoading(false);
     }
@@ -35,7 +39,7 @@ export default function AdminProductsPage() {
       setProducts((prev) => prev.map((item) => (item.book_id === bookId ? data : item)));
       setToast(successMessage);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not update product.'));
+      setToast(getErrorMessage(err, 'Không thể cập nhật sản phẩm.'));
     } finally {
       setSavingProductId(null);
     }
@@ -50,9 +54,9 @@ export default function AdminProductsPage() {
           item.book_id === bookId ? { ...item, is_hidden: true, is_active: false } : item
         )
       );
-      setToast('Product hidden successfully.');
+      setToast('Đã ẩn sản phẩm thành công.');
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not hide product.'));
+      setToast(getErrorMessage(err, 'Không thể ẩn sản phẩm.'));
     } finally {
       setSavingProductId(null);
     }
@@ -61,8 +65,8 @@ export default function AdminProductsPage() {
   return (
     <section className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">Admin Products</h1>
-        <p className="mt-1 text-slate-600">Control product visibility and active status.</p>
+        <h1 className="text-2xl font-semibold">Quản trị sản phẩm</h1>
+        <p className="mt-1 text-slate-600">Kiểm soát trạng thái hiển thị và hoạt động của sản phẩm.</p>
       </div>
 
       <AdminSectionNav />
@@ -70,23 +74,24 @@ export default function AdminProductsPage() {
       {error ? <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       {loading ? (
-        <div className="card">Loading products...</div>
+        <div className="card">Đang tải sản phẩm...</div>
       ) : (
         <article className="card overflow-x-auto">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Products</h2>
+            <h2 className="text-lg font-semibold">Danh sách sản phẩm</h2>
             <button type="button" className="rounded-lg border px-3 py-1.5 text-sm" onClick={loadProducts}>
-              Refresh
+              Làm mới
             </button>
           </div>
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="px-3 py-2 text-left font-medium">ID</th>
-                <th className="px-3 py-2 text-left font-medium">Title</th>
-                <th className="px-3 py-2 text-left font-medium">Seller</th>
-                <th className="px-3 py-2 text-left font-medium">Status</th>
-                <th className="px-3 py-2 text-right font-medium">Actions</th>
+                <th className="px-3 py-2 text-left font-medium">Ảnh</th>
+                <th className="px-3 py-2 text-left font-medium">Tên sách</th>
+                <th className="px-3 py-2 text-left font-medium">Người bán</th>
+                <th className="px-3 py-2 text-left font-medium">Trạng thái</th>
+                <th className="px-3 py-2 text-right font-medium">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -94,7 +99,23 @@ export default function AdminProductsPage() {
                 <tr key={product.book_id}>
                   <td className="px-3 py-2">#{product.book_id}</td>
                   <td className="px-3 py-2">
-                    <p className="font-medium">{product.title}</p>
+                    <div className="h-16 w-12 overflow-hidden rounded border border-slate-200 bg-slate-100">
+                      {product.image_url ? (
+                        <img
+                          src={resolveMediaUrl(product.image_url)}
+                          alt={product.title}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          onError={(event) => {
+                            event.currentTarget.onerror = null;
+                            event.currentTarget.src = FALLBACK_COVER;
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <p className="max-w-[240px] truncate font-medium">{product.title}</p>
                     <p className="text-xs text-slate-500">{product.author}</p>
                   </td>
                   <td className="px-3 py-2 text-xs">
@@ -102,8 +123,8 @@ export default function AdminProductsPage() {
                     <p className="text-slate-500">{product.seller_username || '-'}</p>
                   </td>
                   <td className="px-3 py-2 text-xs text-slate-600">
-                    <p>Active: {product.is_active ? 'Yes' : 'No'}</p>
-                    <p>Hidden: {product.is_hidden ? 'Yes' : 'No'}</p>
+                    <p>Đang hoạt động: {product.is_active ? 'Có' : 'Không'}</p>
+                    <p>Đang ẩn: {product.is_hidden ? 'Có' : 'Không'}</p>
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-2">
@@ -114,12 +135,12 @@ export default function AdminProductsPage() {
                           onProductPatch(
                             product.book_id,
                             { is_active: !product.is_active },
-                            product.is_active ? 'Product deactivated.' : 'Product activated.'
+                            product.is_active ? 'Đã tắt trạng thái hoạt động của sản phẩm.' : 'Đã bật trạng thái hoạt động của sản phẩm.'
                           )
                         }
                         disabled={savingProductId === product.book_id}
                       >
-                        {product.is_active ? 'Deactivate' : 'Activate'}
+                        {product.is_active ? 'Tắt hoạt động' : 'Kích hoạt'}
                       </button>
                       <button
                         type="button"
@@ -128,12 +149,12 @@ export default function AdminProductsPage() {
                           onProductPatch(
                             product.book_id,
                             { is_hidden: !product.is_hidden },
-                            product.is_hidden ? 'Product unhidden.' : 'Product hidden.'
+                            product.is_hidden ? 'Đã bỏ ẩn sản phẩm.' : 'Đã ẩn sản phẩm.'
                           )
                         }
                         disabled={savingProductId === product.book_id}
                       >
-                        {product.is_hidden ? 'Unhide' : 'Hide'}
+                        {product.is_hidden ? 'Bỏ ẩn' : 'Ẩn'}
                       </button>
                       <button
                         type="button"
@@ -141,7 +162,7 @@ export default function AdminProductsPage() {
                         onClick={() => onHideProduct(product.book_id)}
                         disabled={savingProductId === product.book_id || product.is_hidden}
                       >
-                        {product.is_hidden ? 'Hidden' : 'Soft Delete'}
+                        {product.is_hidden ? 'Đã ẩn' : 'Ẩn mềm'}
                       </button>
                     </div>
                   </td>

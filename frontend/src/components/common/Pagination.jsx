@@ -2,8 +2,31 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null;
 
   const pages = [];
-  for (let i = 1; i <= totalPages; i += 1) {
-    pages.push(i);
+  const addPage = (value) => {
+    if (pages[pages.length - 1] !== value) {
+      pages.push(value);
+    }
+  };
+
+  addPage(1);
+
+  const windowStart = Math.max(2, currentPage - 1);
+  const windowEnd = Math.min(totalPages - 1, currentPage + 1);
+
+  if (windowStart > 2) {
+    addPage('ellipsis-left');
+  }
+
+  for (let page = windowStart; page <= windowEnd; page += 1) {
+    addPage(page);
+  }
+
+  if (windowEnd < totalPages - 1) {
+    addPage('ellipsis-right');
+  }
+
+  if (totalPages > 1) {
+    addPage(totalPages);
   }
 
   return (
@@ -14,23 +37,34 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
         disabled={currentPage === 1}
         onClick={() => onPageChange(currentPage - 1)}
       >
-        Prev
+        Trước
       </button>
 
-      {pages.map((page) => (
-        <button
-          key={page}
-          type="button"
-          className={`rounded-md px-3 py-1.5 text-sm ${
-            page === currentPage
-              ? 'bg-brand-500 text-white'
-              : 'border border-slate-300 text-slate-700'
-          }`}
-          onClick={() => onPageChange(page)}
-        >
-          {page}
-        </button>
-      ))}
+      {pages.map((page) => {
+        if (String(page).startsWith('ellipsis')) {
+          return (
+            <span key={page} className="px-1 text-slate-500">
+              ...
+            </span>
+          );
+        }
+
+        return (
+          <button
+            key={page}
+            type="button"
+            className={`rounded-md px-3 py-1.5 text-sm ${
+              page === currentPage
+                ? 'bg-brand-500 text-white'
+                : 'border border-slate-300 text-slate-700'
+            }`}
+            onClick={() => onPageChange(page)}
+            aria-current={page === currentPage ? 'page' : undefined}
+          >
+            {page}
+          </button>
+        );
+      })}
 
       <button
         type="button"
@@ -38,7 +72,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
         disabled={currentPage === totalPages}
         onClick={() => onPageChange(currentPage + 1)}
       >
-        Next
+        Sau
       </button>
     </div>
   );

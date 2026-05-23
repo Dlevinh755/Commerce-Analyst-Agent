@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
-from .db import ensure_indexes
+from .db import Base, engine
+from . import models
 from .routers import reviews
 
 app = FastAPI(
@@ -10,7 +11,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-ensure_indexes()
+Base.metadata.create_all(bind=engine)
 
 app.include_router(reviews.router)
 

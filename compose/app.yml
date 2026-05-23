@@ -1,0 +1,230 @@
+name: commerce-analyst-agent
+
+services:
+  gateway:
+    build: ../gateway
+    container_name: commerce-gateway
+    restart: always
+    ports:
+      - "${GATEWAY_PORT}:80"
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME}
+      - GATEWAY_PORT=80
+      - AUTH_SERVICE_HOST=${AUTH_SERVICE_HOST}
+      - AUTH_SERVICE_PORT=${AUTH_SERVICE_PORT}
+      - PRODUCT_SERVICE_HOST=${PRODUCT_SERVICE_HOST}
+      - PRODUCT_SERVICE_PORT=${PRODUCT_SERVICE_PORT}
+      - CART_SERVICE_HOST=cart-service
+      - CART_SERVICE_PORT=${CART_SERVICE_PORT}
+      - ORDER_SERVICE_HOST=order_service
+      - ORDER_SERVICE_PORT=${ORDER_SERVICE_PORT}
+      - PAYMENT_SERVICE_HOST=payment_service
+      - PAYMENT_SERVICE_PORT=${PAYMENT_SERVICE_PORT}
+      - PAYOUT_SERVICE_HOST=payout_service
+      - PAYOUT_SERVICE_PORT=${PAYOUT_SERVICE_PORT:-8008}
+      - REVIEW_SERVICE_HOST=review_service
+      - REVIEW_SERVICE_PORT=${REVIEW_SERVICE_PORT:-8006}
+      - VNPAY_SERVICE_HOST=vnpay_service
+      - VNPAY_SERVICE_PORT=${VNPAY_SERVICE_PORT:-8005}
+      - KAFKA_UI_HOST=${KAFKA_UI_HOST}
+      - KAFKA_UI_PORT=${KAFKA_UI_PORT}
+      - ANALYTICS_AGENT_SERVICE_HOST=${ANALYTICS_AGENT_SERVICE_HOST}
+      - ANALYTICS_AGENT_SERVICE_PORT=${ANALYTICS_AGENT_SERVICE_PORT}
+    networks:
+      - default
+      - commerce-network
+    depends_on:
+      product-service:
+        condition: service_healthy
+
+  auth-service:
+    build: ../services/auth-service
+    container_name: commerce-auth-service
+    restart: always
+    ports:
+      - "${AUTH_SERVICE_PORT:-8000}:8000"
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+      - DEV_AUTO_SEED=true
+      - DEV_SEED_FILE=/app/dev-seeds.json
+    volumes:
+      - ../dev-seeds.json:/app/dev-seeds.json:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    networks:
+      - default
+      - commerce-network
+
+  product-service:
+    build: ../services/product-service
+    container_name: commerce-product-service
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+      - PUBLIC_PRODUCTS_BASE_URL=${PUBLIC_PRODUCTS_BASE_URL:-/api/v1/products}
+      - DEV_AUTO_SEED=true
+      - DEV_SEED_FILE=/app/dev-seeds.json
+    ports:
+      - "${PRODUCT_SERVICE_PORT:-8001}:8001"
+    volumes:
+      - ../services/product-service:/app
+      - ../dev-seeds.json:/app/dev-seeds.json:ro
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      postgres-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/books?page=1&page_size=1')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  cart-service:
+    build: ../services/cart-service
+    container_name: commerce-cart-service
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+    ports:
+      - "${CART_SERVICE_PORT:-8002}:8002"
+    volumes:
+      - ..:/services/cart-service
+    depends_on:
+      - postgres-db
+    networks:
+      - default
+      - commerce-network
+
+  order_service:
+    build: ../services/order-service
+    container_name: commerce-order-service
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+      - DEV_AUTO_SEED=true
+      - DEV_SEED_FILE=/seed/dev-seeds.json
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - PRODUCT_SERVICE_URL=http://product-service:8001
+    ports:
+      - "${ORDER_SERVICE_PORT:-8003}:8003"
+    volumes:
+      - ../services/order-service:/app
+      - ../dev-seeds.json:/seed/dev-seeds.json:ro
+    depends_on:
+      product-service:
+        condition: service_healthy
+
+  payment_service:
+    build: ../services/payment-service
+    container_name: commerce-payment-service
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+    ports:
+      - "${PAYMENT_SERVICE_PORT:-8004}:8004"
+    volumes:
+      - ../services/payment-service:/app
+    depends_on:
+      - postgres-db
+
+  payout_service:
+    build: ../services/payout-service
+    container_name: commerce-payout-service
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+    ports:
+      - "${PAYOUT_SERVICE_PORT:-8008}:8008"
+    volumes:
+      - ../services/payout-service:/app
+    depends_on:
+      - postgres-db
+
+  review_service:
+    build: ../services/review-service
+    container_name: commerce-review-service
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+      - ORDER_SERVICE_URL=http://order_service:8003
+      - PRODUCT_SERVICE_URL=http://product-service:8001
+    ports:
+      - "${REVIEW_SERVICE_PORT:-8006}:8006"
+    depends_on:
+      - postgres-db
+      - order_service
+      - product-service
+
+  vnpay_service:
+    build: ../services/vnpay-service
+    container_name: commerce-vnpay-service
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+      - PAYMENT_SERVICE_URL=http://payment_service:8004
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,pay.bookstore.ailab.engineer,bookstore.ailab.engineer
+    ports:
+      - "${VNPAY_SERVICE_PORT:-8005}:8005"
+    volumes:
+      - ../services/vnpay-service:/app
+    depends_on:
+      - postgres-db
+
+  analytics-agent:
+    build: ../services/analytics-agent-service
+    container_name: commerce-analytics-agent-service
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      - ANALYTICS_AGENT_ROOT_PATH=/api/v1/analytics
+    ports:
+      - "${ANALYTICS_AGENT_SERVICE_PORT:-8007}:8000"
+    volumes:
+      - ../services/analytics-agent-service:/app
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: dockerfile
+    container_name: commerce-frontend
+    ports:
+      - "${FRONTEND_DOCKER_PORT:-5175}:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=/api/v1
+      - VITE_DEV_PROXY_TARGET=http://gateway:80
+      - VITE_HMR_HOST=bookstore.ailab.engineer
+      - VITE_HMR_PROTOCOL=wss
+      - VITE_HMR_CLIENT_PORT=443
+    depends_on:
+      - gateway
+    networks:
+      - default

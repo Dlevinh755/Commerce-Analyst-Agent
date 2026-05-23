@@ -761,3 +761,174 @@ databricks.sql.exc.ServerOperationError: [UNRESOLVED_COLUMN.WITH_SUGGESTION] A c
 2026-05-23 09:26:48 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
 2026-05-23 09:26:53 | app.main | INFO | 🛑 AI Data Query Agent shutting down...
 2026-05-23 09:30:42 | app.main | INFO | 🚀 AI Data Query Agent starting up...
+2026-05-23 11:27:05 | app.main | INFO | 🛑 AI Data Query Agent shutting down...
+2026-05-23 12:52:49 | app.main | INFO | 🚀 AI Data Query Agent starting up...
+2026-05-23 14:10:28 | app.api.service | INFO | API request: stream_query | session_id=admin-1779545428452-5jf0hu
+2026-05-23 14:10:28 | app.agent.service | INFO | Starting agent stream | session_id=admin-1779545428452-5jf0hu | question=hello
+2026-05-23 14:10:29 | google_genai.models | INFO | AFC is enabled with max remote calls: 10.
+2026-05-23 14:10:31 | httpx | INFO | HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent "HTTP/1.1 200 OK"
+2026-05-23 14:10:31 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-05-23 14:10:31 | google_genai.models | INFO | AFC remote call 1 is done.
+2026-05-23 14:10:31 | app.agent.service | INFO | Agent stream chunk received | session_id=admin-1779545428452-5jf0hu | chunk_type=tuple | chunk=('updates', {'parse_intent': {'parsed_intent': ParsedIntent(is_followup=False, metric='', dimensions=[], time_range='', time_grain='', filters=[], ranking_type='', ranking_value=0, compare_to='', source_hint='', override_mode='', needs_comparison=False, comparison_granularity='', limit=0, sort_by='', sort_order='')}})
+2026-05-23 14:10:31 | app.agent.service | INFO | Agent stream tuple chunk | session_id=admin-1779545428452-5jf0hu | mode=updates | payload_type=dict | payload={'parse_intent': {'parsed_intent': ParsedIntent(is_followup=False, metric='', dimensions=[], time_range='', time_grain='', filters=[], ranking_type='', ranking_value=0, compare_to='', source_hint='', override_mode='', needs_comparison=False, comparison_granularity='', limit=0, sort_by='', sort_order='')}}
+2026-05-23 14:10:31 | app.agent.service | INFO | Agent stream updates payload | session_id=admin-1779545428452-5jf0hu | step=parse_intent | payload={'parsed_intent': ParsedIntent(is_followup=False, metric='', dimensions=[], time_range='', time_grain='', filters=[], ranking_type='', ranking_value=0, compare_to='', source_hint='', override_mode='', needs_comparison=False, comparison_granularity='', limit=0, sort_by='', sort_order='')}
+2026-05-23 14:10:31 | app.agent.service | INFO | Agent stream chunk received | session_id=admin-1779545428452-5jf0hu | chunk_type=tuple | chunk=('updates', {'retrieve_schema': {'relevant_schema': {'fact_sales': {'name': 'fact_sales', 'type': 'fact', 'grain': 'one row per order item', 'description': 'Dữ liệu bán hàng chi tiết theo từng dòng sản phẩm', 'primary_key': ['order_item_id'], 'foreign_keys': ['buyer_id -> dim_users.user_id', 'seller_id -> dim_users.user_id', 'book_id -> dim_books.book_id'], 'columns': [{'name': 'order_item_id', 'type': 'int', 'description': 'ID dòng đơn hàng'}, {'name': 'order_id', 'type': 'int', 'description': ...<truncated>
+2026-05-23 14:10:31 | app.agent.service | INFO | Agent stream tuple chunk | session_id=admin-1779545428452-5jf0hu | mode=updates | payload_type=dict | payload={'retrieve_schema': {'relevant_schema': {'fact_sales': {'name': 'fact_sales', 'type': 'fact', 'grain': 'one row per order item', 'description': 'Dữ liệu bán hàng chi tiết theo từng dòng sản phẩm', 'primary_key': ['order_item_id'], 'foreign_keys': ['buyer_id -> dim_users.user_id', 'seller_id -> dim_users.user_id', 'book_id -> dim_books.book_id'], 'columns': [{'name': 'order_item_id', 'type': 'int', 'description': 'ID dòng đơn hàng'}, {'name': 'order_id', 'type': 'int', 'description': 'ID đơn hàng...<truncated>
+2026-05-23 14:10:31 | app.agent.service | INFO | Agent stream updates payload | session_id=admin-1779545428452-5jf0hu | step=retrieve_schema | payload={'relevant_schema': {'fact_sales': {'name': 'fact_sales', 'type': 'fact', 'grain': 'one row per order item', 'description': 'Dữ liệu bán hàng chi tiết theo từng dòng sản phẩm', 'primary_key': ['order_item_id'], 'foreign_keys': ['buyer_id -> dim_users.user_id', 'seller_id -> dim_users.user_id', 'book_id -> dim_books.book_id'], 'columns': [{'name': 'order_item_id', 'type': 'int', 'description': 'ID dòng đơn hàng'}, {'name': 'order_id', 'type': 'int', 'description': 'ID đơn hàng'}, {'name': 'buyer_...<truncated>
+2026-05-23 14:10:31 | google_genai.models | INFO | AFC is enabled with max remote calls: 10.
+2026-05-23 14:10:33 | httpx | INFO | HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent "HTTP/1.1 200 OK"
+2026-05-23 14:10:33 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-05-23 14:10:33 | google_genai.models | INFO | AFC remote call 1 is done.
+2026-05-23 14:10:33 | app.agent.nodes.build_analysis_plan | INFO | Analysis plan built | session_id=admin-1779545428452-5jf0hu | fact_table=fact_sales | metrics= | dimensions=
+2026-05-23 14:10:33 | app.agent.service | INFO | Agent stream chunk received | session_id=admin-1779545428452-5jf0hu | chunk_type=tuple | chunk=('updates', {'build_analysis_plan': {'analysis_plan': AnalysisPlan(goal='Greeting user and introducing available analysis capabilities for sales data.', fact_table='fact_sales', joins=[], dimensions=[], metrics=[], filters=[], order_by=[], limit=None, group_by=[], comparison=None, notes=['User sent a greeting. No specific data analysis query provided.'])}})
+2026-05-23 14:10:33 | app.agent.service | INFO | Agent stream tuple chunk | session_id=admin-1779545428452-5jf0hu | mode=updates | payload_type=dict | payload={'build_analysis_plan': {'analysis_plan': AnalysisPlan(goal='Greeting user and introducing available analysis capabilities for sales data.', fact_table='fact_sales', joins=[], dimensions=[], metrics=[], filters=[], order_by=[], limit=None, group_by=[], comparison=None, notes=['User sent a greeting. No specific data analysis query provided.'])}}
+2026-05-23 14:10:33 | app.agent.service | INFO | Agent stream updates payload | session_id=admin-1779545428452-5jf0hu | step=build_analysis_plan | payload={'analysis_plan': AnalysisPlan(goal='Greeting user and introducing available analysis capabilities for sales data.', fact_table='fact_sales', joins=[], dimensions=[], metrics=[], filters=[], order_by=[], limit=None, group_by=[], comparison=None, notes=['User sent a greeting. No specific data analysis query provided.'])}
+2026-05-23 14:10:33 | google_genai.models | INFO | AFC is enabled with max remote calls: 10.
+2026-05-23 14:10:37 | httpx | INFO | HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+2026-05-23 14:10:37 | google_genai.models | INFO | AFC remote call 1 is done.
+2026-05-23 14:10:37 | app.agent.nodes.generate_sql | INFO | SQL generated | session_id=admin-1779545428452-5jf0hu | sql_length=91 | fact_table=fact_sales | join_tables=
+2026-05-23 14:10:37 | app.agent.service | INFO | Agent stream chunk received | session_id=admin-1779545428452-5jf0hu | chunk_type=tuple | chunk=('updates', {'generate_sql': {'generated_sql': "SELECT 'Hello! I can help you analyze sales data. What would you like to know?' AS greeting"}})
+2026-05-23 14:10:37 | app.agent.service | INFO | Agent stream tuple chunk | session_id=admin-1779545428452-5jf0hu | mode=updates | payload_type=dict | payload={'generate_sql': {'generated_sql': "SELECT 'Hello! I can help you analyze sales data. What would you like to know?' AS greeting"}}
+2026-05-23 14:10:37 | app.agent.service | INFO | Agent stream updates payload | session_id=admin-1779545428452-5jf0hu | step=generate_sql | payload={'generated_sql': "SELECT 'Hello! I can help you analyze sales data. What would you like to know?' AS greeting"}
+2026-05-23 14:10:37 | app.agent.service | ERROR | Agent stream failed | session_id=admin-1779545428452-5jf0hu | error=Query does not reference any allowed table.
+Traceback (most recent call last):
+  File "/app/app/agent/service.py", line 61, in stream_agent
+    async for chunk in graph.astream(
+  File "/usr/local/lib/python3.10/site-packages/langgraph/pregel/main.py", line 2939, in astream
+    async for _ in runner.atick(
+  File "/usr/local/lib/python3.10/site-packages/langgraph/pregel/_runner.py", line 401, in atick
+    _panic_or_proceed(
+  File "/usr/local/lib/python3.10/site-packages/langgraph/pregel/_runner.py", line 511, in _panic_or_proceed
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/langgraph/pregel/_retry.py", line 137, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+  File "/usr/local/lib/python3.10/site-packages/langgraph/_internal/_runnable.py", line 710, in ainvoke
+    input = await step.ainvoke(input, config, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/langgraph/_internal/_runnable.py", line 474, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/langchain_core/runnables/config.py", line 617, in run_in_executor
+    return await asyncio.get_running_loop().run_in_executor(
+  File "/usr/local/lib/python3.10/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/local/lib/python3.10/site-packages/langchain_core/runnables/config.py", line 608, in wrapper
+    return func(*args, **kwargs)
+  File "/app/app/agent/nodes/validate_sql.py", line 29, in validate_sql_node
+    validated = validate_sql(state.generated_sql, allowed_tables=allowed_tables)
+  File "/app/app/security/sql_guard.py", line 24, in validate_sql
+    raise ValueError("Query does not reference any allowed table.")
+ValueError: Query does not reference any allowed table.
+2026-05-23 14:10:37 | app.api.service | ERROR | API error: stream_query | session_id=admin-1779545428452-5jf0hu | error=Query does not reference any allowed table.
+2026-05-23 14:10:50 | app.api.service | INFO | API request: stream_query | session_id=admin-1779545450514-j17wul
+2026-05-23 14:10:50 | app.agent.service | INFO | Starting agent stream | session_id=admin-1779545450514-j17wul | question=số order trong năm 2025
+2026-05-23 14:10:50 | google_genai.models | INFO | AFC is enabled with max remote calls: 10.
+2026-05-23 14:10:52 | httpx | INFO | HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent "HTTP/1.1 200 OK"
+2026-05-23 14:10:52 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-05-23 14:10:52 | google_genai.models | INFO | AFC remote call 1 is done.
+2026-05-23 14:10:52 | app.agent.service | INFO | Agent stream chunk received | session_id=admin-1779545450514-j17wul | chunk_type=tuple | chunk=('updates', {'parse_intent': {'parsed_intent': ParsedIntent(is_followup=False, metric='orders', dimensions=[], time_range='2025-01-01 to 2025-12-31', time_grain='year', filters=[], ranking_type=None, ranking_value=None, compare_to=None, source_hint='fact_sales', override_mode=None, needs_comparison=False, comparison_granularity=None, limit=None, sort_by=None, sort_order=None)}})
+2026-05-23 14:10:52 | app.agent.service | INFO | Agent stream tuple chunk | session_id=admin-1779545450514-j17wul | mode=updates | payload_type=dict | payload={'parse_intent': {'parsed_intent': ParsedIntent(is_followup=False, metric='orders', dimensions=[], time_range='2025-01-01 to 2025-12-31', time_grain='year', filters=[], ranking_type=None, ranking_value=None, compare_to=None, source_hint='fact_sales', override_mode=None, needs_comparison=False, comparison_granularity=None, limit=None, sort_by=None, sort_order=None)}}
+2026-05-23 14:10:52 | app.agent.service | INFO | Agent stream updates payload | session_id=admin-1779545450514-j17wul | step=parse_intent | payload={'parsed_intent': ParsedIntent(is_followup=False, metric='orders', dimensions=[], time_range='2025-01-01 to 2025-12-31', time_grain='year', filters=[], ranking_type=None, ranking_value=None, compare_to=None, source_hint='fact_sales', override_mode=None, needs_comparison=False, comparison_granularity=None, limit=None, sort_by=None, sort_order=None)}
+2026-05-23 14:10:52 | app.agent.service | INFO | Agent stream chunk received | session_id=admin-1779545450514-j17wul | chunk_type=tuple | chunk=('updates', {'retrieve_schema': {'relevant_schema': {'fact_sales': {'name': 'fact_sales', 'type': 'fact', 'grain': 'one row per order item', 'description': 'Dữ liệu bán hàng chi tiết theo từng dòng sản phẩm', 'primary_key': ['order_item_id'], 'foreign_keys': ['buyer_id -> dim_users.user_id', 'seller_id -> dim_users.user_id', 'book_id -> dim_books.book_id'], 'columns': [{'name': 'order_item_id', 'type': 'int', 'description': 'ID dòng đơn hàng'}, {'name': 'order_id', 'type': 'int', 'description': ...<truncated>
+2026-05-23 14:10:52 | app.agent.service | INFO | Agent stream tuple chunk | session_id=admin-1779545450514-j17wul | mode=updates | payload_type=dict | payload={'retrieve_schema': {'relevant_schema': {'fact_sales': {'name': 'fact_sales', 'type': 'fact', 'grain': 'one row per order item', 'description': 'Dữ liệu bán hàng chi tiết theo từng dòng sản phẩm', 'primary_key': ['order_item_id'], 'foreign_keys': ['buyer_id -> dim_users.user_id', 'seller_id -> dim_users.user_id', 'book_id -> dim_books.book_id'], 'columns': [{'name': 'order_item_id', 'type': 'int', 'description': 'ID dòng đơn hàng'}, {'name': 'order_id', 'type': 'int', 'description': 'ID đơn hàng...<truncated>
+2026-05-23 14:10:52 | app.agent.service | INFO | Agent stream updates payload | session_id=admin-1779545450514-j17wul | step=retrieve_schema | payload={'relevant_schema': {'fact_sales': {'name': 'fact_sales', 'type': 'fact', 'grain': 'one row per order item', 'description': 'Dữ liệu bán hàng chi tiết theo từng dòng sản phẩm', 'primary_key': ['order_item_id'], 'foreign_keys': ['buyer_id -> dim_users.user_id', 'seller_id -> dim_users.user_id', 'book_id -> dim_books.book_id'], 'columns': [{'name': 'order_item_id', 'type': 'int', 'description': 'ID dòng đơn hàng'}, {'name': 'order_id', 'type': 'int', 'description': 'ID đơn hàng'}, {'name': 'buyer_...<truncated>
+2026-05-23 14:10:52 | google_genai.models | INFO | AFC is enabled with max remote calls: 10.
+2026-05-23 14:10:55 | httpx | INFO | HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent "HTTP/1.1 200 OK"
+2026-05-23 14:10:55 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-05-23 14:10:55 | google_genai.models | INFO | AFC remote call 1 is done.
+2026-05-23 14:10:55 | app.agent.nodes.build_analysis_plan | INFO | Analysis plan built | session_id=admin-1779545450514-j17wul | fact_table=fact_sales | metrics=orders | dimensions=
+2026-05-23 14:10:55 | app.agent.service | INFO | Agent stream chunk received | session_id=admin-1779545450514-j17wul | chunk_type=tuple | chunk=('updates', {'build_analysis_plan': {'analysis_plan': AnalysisPlan(goal='Tính tổng số đơn hàng trong năm 2025', fact_table='fact_sales', joins=[], dimensions=[], metrics=[MetricSpec(name='orders', expression='COUNT(DISTINCT order_id)', alias='total_orders')], filters=['YEAR(TO_TIMESTAMP(order_date / 1000)) = 2025'], order_by=[], limit=None, group_by=[], comparison=None, notes=['Sử dụng TO_TIMESTAMP(order_date / 1000) vì cột order_date là dạng Unix timestamp milliseconds.', 'Không thêm filter del...<truncated>
+2026-05-23 14:10:55 | app.agent.service | INFO | Agent stream tuple chunk | session_id=admin-1779545450514-j17wul | mode=updates | payload_type=dict | payload={'build_analysis_plan': {'analysis_plan': AnalysisPlan(goal='Tính tổng số đơn hàng trong năm 2025', fact_table='fact_sales', joins=[], dimensions=[], metrics=[MetricSpec(name='orders', expression='COUNT(DISTINCT order_id)', alias='total_orders')], filters=['YEAR(TO_TIMESTAMP(order_date / 1000)) = 2025'], order_by=[], limit=None, group_by=[], comparison=None, notes=['Sử dụng TO_TIMESTAMP(order_date / 1000) vì cột order_date là dạng Unix timestamp milliseconds.', 'Không thêm filter delivered vì yê...<truncated>
+2026-05-23 14:10:55 | app.agent.service | INFO | Agent stream updates payload | session_id=admin-1779545450514-j17wul | step=build_analysis_plan | payload={'analysis_plan': AnalysisPlan(goal='Tính tổng số đơn hàng trong năm 2025', fact_table='fact_sales', joins=[], dimensions=[], metrics=[MetricSpec(name='orders', expression='COUNT(DISTINCT order_id)', alias='total_orders')], filters=['YEAR(TO_TIMESTAMP(order_date / 1000)) = 2025'], order_by=[], limit=None, group_by=[], comparison=None, notes=['Sử dụng TO_TIMESTAMP(order_date / 1000) vì cột order_date là dạng Unix timestamp milliseconds.', 'Không thêm filter delivered vì yêu cầu là đếm số lượng đơ...<truncated>
+2026-05-23 14:10:55 | google_genai.models | INFO | AFC is enabled with max remote calls: 10.
+2026-05-23 14:11:10 | httpx | INFO | HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+2026-05-23 14:11:10 | google_genai.models | INFO | AFC remote call 1 is done.
+2026-05-23 14:11:10 | app.agent.nodes.generate_sql | INFO | SQL generated | session_id=admin-1779545450514-j17wul | sql_length=266 | fact_table=fact_sales | join_tables=
+2026-05-23 14:11:10 | app.agent.service | INFO | Agent stream chunk received | session_id=admin-1779545450514-j17wul | chunk_type=tuple | chunk=('updates', {'generate_sql': {'generated_sql': 'SELECT COUNT(DISTINCT order_id) AS total_orders FROM fact_sales WHERE YEAR(CAST(FROM_UNIXTIME(CASE WHEN ABS(CAST(order_date AS BIGINT)) >= 1000000000000 THEN CAST(CAST(order_date AS BIGINT) / 1000 AS BIGINT) ELSE CAST(order_date AS BIGINT) END) AS TIMESTAMP)) = 2025'}})
+2026-05-23 14:11:10 | app.agent.service | INFO | Agent stream tuple chunk | session_id=admin-1779545450514-j17wul | mode=updates | payload_type=dict | payload={'generate_sql': {'generated_sql': 'SELECT COUNT(DISTINCT order_id) AS total_orders FROM fact_sales WHERE YEAR(CAST(FROM_UNIXTIME(CASE WHEN ABS(CAST(order_date AS BIGINT)) >= 1000000000000 THEN CAST(CAST(order_date AS BIGINT) / 1000 AS BIGINT) ELSE CAST(order_date AS BIGINT) END) AS TIMESTAMP)) = 2025'}}
+2026-05-23 14:11:10 | app.agent.service | INFO | Agent stream updates payload | session_id=admin-1779545450514-j17wul | step=generate_sql | payload={'generated_sql': 'SELECT COUNT(DISTINCT order_id) AS total_orders FROM fact_sales WHERE YEAR(CAST(FROM_UNIXTIME(CASE WHEN ABS(CAST(order_date AS BIGINT)) >= 1000000000000 THEN CAST(CAST(order_date AS BIGINT) / 1000 AS BIGINT) ELSE CAST(order_date AS BIGINT) END) AS TIMESTAMP)) = 2025'}
+2026-05-23 14:11:10 | app.agent.service | INFO | Agent stream chunk received | session_id=admin-1779545450514-j17wul | chunk_type=tuple | chunk=('updates', {'validate_sql': {'validated_sql': 'SELECT COUNT(DISTINCT order_id) AS total_orders FROM fact_sales WHERE YEAR(CAST(FROM_UNIXTIME(CASE WHEN ABS(CAST(order_date AS BIGINT)) >= 1000000000000 THEN CAST(CAST(order_date AS BIGINT) / 1000 AS BIGINT) ELSE CAST(order_date AS BIGINT) END) AS TIMESTAMP)) = 2025'}})
+2026-05-23 14:11:10 | app.agent.service | INFO | Agent stream tuple chunk | session_id=admin-1779545450514-j17wul | mode=updates | payload_type=dict | payload={'validate_sql': {'validated_sql': 'SELECT COUNT(DISTINCT order_id) AS total_orders FROM fact_sales WHERE YEAR(CAST(FROM_UNIXTIME(CASE WHEN ABS(CAST(order_date AS BIGINT)) >= 1000000000000 THEN CAST(CAST(order_date AS BIGINT) / 1000 AS BIGINT) ELSE CAST(order_date AS BIGINT) END) AS TIMESTAMP)) = 2025'}}
+2026-05-23 14:11:10 | app.agent.service | INFO | Agent stream updates payload | session_id=admin-1779545450514-j17wul | step=validate_sql | payload={'validated_sql': 'SELECT COUNT(DISTINCT order_id) AS total_orders FROM fact_sales WHERE YEAR(CAST(FROM_UNIXTIME(CASE WHEN ABS(CAST(order_date AS BIGINT)) >= 1000000000000 THEN CAST(CAST(order_date AS BIGINT) / 1000 AS BIGINT) ELSE CAST(order_date AS BIGINT) END) AS TIMESTAMP)) = 2025'}
+2026-05-23 14:11:12 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:11:12 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:11:12 | databricks.sql.session | INFO | Successfully opened session 01f156b1-41a0-1293-a08a-a7cb6de9a0b2
+2026-05-23 14:11:13 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:11:13 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:11:23 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:11:23 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:11:34 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:11:34 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:11:44 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:11:44 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:11:54 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:11:54 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:12:05 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:12:05 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:12:15 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:12:15 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:12:25 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:12:25 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:12:36 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:12:36 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:12:46 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:12:46 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:12:56 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:12:56 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:13:07 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:13:07 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:13:17 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:13:17 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:13:27 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:13:27 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:13:38 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:13:38 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:13:48 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:13:48 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:13:58 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:13:58 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:14:09 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:14:09 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:14:19 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:14:19 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:14:29 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:14:29 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:14:40 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:14:40 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:14:50 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:14:50 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:15:00 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:15:00 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:15:11 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:15:11 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:15:21 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:15:21 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:15:31 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:15:31 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:15:42 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:15:42 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:15:52 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:15:52 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:16:02 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:16:02 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:16:13 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:16:13 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:16:23 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:16:23 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:16:34 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:16:34 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:16:44 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:16:44 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:16:54 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:16:54 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:17:05 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:17:05 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:17:15 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:17:15 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:17:25 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:17:25 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:17:36 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:17:36 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:17:46 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:17:46 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:17:56 | databricks.sql.auth.retry | INFO | Received status code 200 for POST request
+2026-05-23 14:17:56 | databricks.sql.auth.thrift_http_client | INFO | HTTP Response with status code 200, message: OK
+2026-05-23 14:18:00 | app.main | INFO | 🛑 AI Data Query Agent shutting down...

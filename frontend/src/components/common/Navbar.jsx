@@ -64,6 +64,20 @@ export default function Navbar() {
 
           {isAuthenticated ? (
             <>
+              <NavItem
+                to={dashboardPath}
+                icon={
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 13h8V3H3v10z" />
+                    <path d="M13 21h8V11h-8v10z" />
+                    <path d="M13 3h8v6h-8V3z" />
+                    <path d="M3 17h8v4H3v-4z" />
+                  </svg>
+                }
+              >
+                AI Assistant
+              </NavItem>
+
               {role === 'buyer' ? (
                 <>
                   <NavItem

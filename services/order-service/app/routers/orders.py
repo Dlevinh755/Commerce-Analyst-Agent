@@ -144,7 +144,53 @@ def finalize_order_cancellation(
         item.status = OrderItemStatus.cancelled
     for seller_order in order.seller_orders:
         seller_order.status = SellerOrderStatus.cancelled
+        seller_order.cancellation_status = cancellation_status.value
+        seller_order.cancellation_reviewed_at = order.cancellation_reviewed_at
     return refunded
+
+
+def get_shipped_seller_orders(order: Order) -> list[SellerOrder]:
+    return [
+        seller_order
+        for seller_order in order.seller_orders
+        if seller_order.status == SellerOrderStatus.shipped
+    ]
+
+
+def get_effective_seller_cancellation_status(order: Order, seller_order: SellerOrder) -> CancellationStatus:
+    seller_cancellation_status = normalize_cancellation_status(getattr(seller_order, "cancellation_status", None))
+    order_cancellation_status = normalize_cancellation_status(getattr(order, "cancellation_status", None))
+    if (
+        order_cancellation_status == CancellationStatus.pending
+        and seller_order.status == SellerOrderStatus.shipped
+        and seller_cancellation_status == CancellationStatus.none
+    ):
+        return CancellationStatus.pending
+    return seller_cancellation_status
+
+
+def request_cancellation_from_shipped_sellers(order: Order, reason: str | None) -> None:
+    requested_at = utc_now_naive()
+    order.cancellation_status = CancellationStatus.pending.value
+    order.cancellation_requested_at = requested_at
+    order.cancellation_reason = reason
+    order.cancellation_reviewed_at = None
+
+    for seller_order in get_shipped_seller_orders(order):
+        seller_order.cancellation_status = CancellationStatus.pending.value
+        seller_order.cancellation_requested_at = requested_at
+        seller_order.cancellation_reason = reason
+        seller_order.cancellation_reviewed_at = None
+
+
+def all_shipped_sellers_approved_cancellation(order: Order) -> bool:
+    shipped_seller_orders = get_shipped_seller_orders(order)
+    if not shipped_seller_orders:
+        return True
+    return all(
+        get_effective_seller_cancellation_status(order, seller_order) == CancellationStatus.approved
+        for seller_order in shipped_seller_orders
+    )
 
 
 def finalize_order_delivery(db: Session, order: Order) -> None:
@@ -257,6 +303,10 @@ def serialize_order(order: Order):
             "order_id": so.order_id,
             "seller_id": so.seller_id,
             "status": seller_override_status or so.status,
+            "cancellation_status": get_effective_seller_cancellation_status(order, so),
+            "cancellation_requested_at": so.cancellation_requested_at,
+            "cancellation_reason": so.cancellation_reason,
+            "cancellation_reviewed_at": so.cancellation_reviewed_at,
             "created_at": so.created_at,
             "updated_at": so.updated_at,
         }
@@ -533,7 +583,11 @@ def get_order_detail(
 
     order = (
         db.query(Order)
-        .options(joinedload(Order.items).joinedload(OrderItem.book), joinedload(Order.payment))
+        .options(
+            joinedload(Order.items).joinedload(OrderItem.book),
+            joinedload(Order.seller_orders),
+            joinedload(Order.payment),
+        )
         .filter(Order.order_id == order_id)
         .first()
     )
@@ -564,7 +618,11 @@ def update_order_status(
 ):
     order = (
         db.query(Order)
-        .options(joinedload(Order.items).joinedload(OrderItem.book), joinedload(Order.payment))
+        .options(
+            joinedload(Order.items).joinedload(OrderItem.book),
+            joinedload(Order.seller_orders),
+            joinedload(Order.payment),
+        )
         .filter(Order.order_id == order_id)
         .first()
     )
@@ -596,7 +654,11 @@ def update_order_status(
 
     order = (
         db.query(Order)
-        .options(joinedload(Order.items).joinedload(OrderItem.book), joinedload(Order.payment))
+        .options(
+            joinedload(Order.items).joinedload(OrderItem.book),
+            joinedload(Order.seller_orders),
+            joinedload(Order.payment),
+        )
         .filter(Order.order_id == order_id)
         .first()
     )
@@ -637,10 +699,14 @@ def cancel_my_order(
             raise HTTPException(status_code=400, detail="Cancellation request is already pending seller approval")
 
         try:
-            order.cancellation_status = CancellationStatus.pending.value
-            order.cancellation_requested_at = utc_now_naive()
-            order.cancellation_reason = data.reason.strip() if data and data.reason else None
-            order.cancellation_reviewed_at = None
+            ensure_seller_orders_initialized(db, order)
+            reason = data.reason.strip() if data and data.reason else None
+            request_cancellation_from_shipped_sellers(order, reason)
+
+            if all_shipped_sellers_approved_cancellation(order):
+                payment = get_payment_for_order(db, order.order_id, lock=True)
+                finalize_order_cancellation(db, order, payment, CancellationStatus.approved)
+
             db.commit()
         except Exception:
             db.rollback()
@@ -691,19 +757,41 @@ def approve_cancellation_request(
     if normalize_cancellation_status(order.cancellation_status) != CancellationStatus.pending:
         raise HTTPException(status_code=400, detail="Order does not have a pending cancellation request")
 
-    if requester_role != "admin":
-        seller_ids = {item.book.seller_id for item in order.items}
-        if requester_id not in seller_ids:
-            raise HTTPException(status_code=403, detail="You can only review cancellation requests for your own orders")
-        if len(seller_ids) > 1:
-            raise HTTPException(
-                status_code=400,
-                detail="This order contains books from multiple sellers and requires admin approval",
-            )
-
     try:
-        payment = get_payment_for_order(db, order.order_id, lock=True)
-        finalize_order_cancellation(db, order, payment, CancellationStatus.approved)
+        ensure_seller_orders_initialized(db, order)
+        shipped_seller_orders = get_shipped_seller_orders(order)
+        if not shipped_seller_orders:
+            raise HTTPException(status_code=400, detail="Order has no shipped seller orders requiring approval")
+
+        review_time = utc_now_naive()
+        if requester_role == "admin":
+            target_seller_orders = [
+                seller_order
+                for seller_order in shipped_seller_orders
+                if get_effective_seller_cancellation_status(order, seller_order) == CancellationStatus.pending
+            ]
+        else:
+            target_seller_orders = [
+                seller_order
+                for seller_order in shipped_seller_orders
+                if seller_order.seller_id == requester_id
+            ]
+            if not target_seller_orders:
+                raise HTTPException(status_code=403, detail="You can only approve cancellation for shipped items you sold")
+
+        if not target_seller_orders:
+            raise HTTPException(status_code=400, detail="No pending seller cancellation approval found")
+
+        for seller_order in target_seller_orders:
+            if get_effective_seller_cancellation_status(order, seller_order) != CancellationStatus.pending:
+                raise HTTPException(status_code=400, detail="This seller cancellation request is not pending")
+            seller_order.cancellation_status = CancellationStatus.approved.value
+            seller_order.cancellation_reviewed_at = review_time
+
+        if all_shipped_sellers_approved_cancellation(order):
+            payment = get_payment_for_order(db, order.order_id, lock=True)
+            finalize_order_cancellation(db, order, payment, CancellationStatus.approved)
+
         db.commit()
         db.refresh(order)
     except HTTPException:
@@ -715,7 +803,11 @@ def approve_cancellation_request(
 
     order = (
         db.query(Order)
-        .options(joinedload(Order.items).joinedload(OrderItem.book), joinedload(Order.payment))
+        .options(
+            joinedload(Order.items).joinedload(OrderItem.book),
+            joinedload(Order.seller_orders),
+            joinedload(Order.payment),
+        )
         .filter(Order.order_id == order_id)
         .first()
     )
@@ -747,30 +839,57 @@ def reject_cancellation_request(
     if normalize_cancellation_status(order.cancellation_status) != CancellationStatus.pending:
         raise HTTPException(status_code=400, detail="Order does not have a pending cancellation request")
 
-    if requester_role != "admin":
-        seller_ids = {item.book.seller_id for item in order.items}
-        if requester_id not in seller_ids:
-            raise HTTPException(status_code=403, detail="You can only review cancellation requests for your own orders")
-        if len(seller_ids) > 1:
-            raise HTTPException(
-                status_code=400,
-                detail="This order contains books from multiple sellers and requires admin approval",
-            )
-
     try:
+        ensure_seller_orders_initialized(db, order)
+        shipped_seller_orders = get_shipped_seller_orders(order)
+        review_time = utc_now_naive()
+
+        if requester_role == "admin":
+            target_seller_orders = [
+                seller_order
+                for seller_order in shipped_seller_orders
+                if get_effective_seller_cancellation_status(order, seller_order) == CancellationStatus.pending
+            ]
+        else:
+            target_seller_orders = [
+                seller_order
+                for seller_order in shipped_seller_orders
+                if seller_order.seller_id == requester_id
+            ]
+            if not target_seller_orders:
+                raise HTTPException(status_code=403, detail="You can only reject cancellation for shipped items you sold")
+
+        if not target_seller_orders:
+            raise HTTPException(status_code=400, detail="No pending seller cancellation approval found")
+
+        for seller_order in target_seller_orders:
+            if get_effective_seller_cancellation_status(order, seller_order) != CancellationStatus.pending:
+                raise HTTPException(status_code=400, detail="This seller cancellation request is not pending")
+            seller_order.cancellation_status = CancellationStatus.rejected.value
+            seller_order.cancellation_reviewed_at = review_time
+            if data and data.reason:
+                seller_order.cancellation_reason = data.reason.strip()
+
         order.cancellation_status = CancellationStatus.rejected.value
-        order.cancellation_reviewed_at = utc_now_naive()
+        order.cancellation_reviewed_at = review_time
         if data and data.reason:
             order.cancellation_reason = data.reason.strip()
         db.commit()
         db.refresh(order)
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to reject cancellation request")
 
     order = (
         db.query(Order)
-        .options(joinedload(Order.items).joinedload(OrderItem.book), joinedload(Order.payment))
+        .options(
+            joinedload(Order.items).joinedload(OrderItem.book),
+            joinedload(Order.seller_orders),
+            joinedload(Order.payment),
+        )
         .filter(Order.order_id == order_id)
         .first()
     )

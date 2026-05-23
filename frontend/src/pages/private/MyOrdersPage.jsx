@@ -63,6 +63,36 @@ function getStatusBadgeClass(status) {
   return 'bg-slate-100 text-slate-700';
 }
 
+function formatLineItemStatus(status) {
+  const normalized = String(status || '').toLowerCase();
+  const labels = {
+    pending: 'Chờ xử lý',
+    processing: 'Đang xử lý',
+    pending_payment: 'Chờ thanh toán',
+    ready_to_ship: 'Sẵn sàng gửi',
+    shipped: 'Đã gửi',
+    partially_shipped: 'Gửi một phần',
+    delivered: 'Đã giao',
+    partially_delivered: 'Giao một phần',
+    cancelled: 'Đã hủy',
+    canceled: 'Đã hủy',
+    returned: 'Đã trả',
+  };
+  return labels[normalized] || formatOrderStatus(status);
+}
+
+function formatDisplayStatus(status) {
+  return formatLineItemStatus(status);
+}
+
+function LineItemStatusBadge({ status }) {
+  return (
+    <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium ${getStatusBadgeClass(status)}`}>
+      {formatLineItemStatus(status)}
+    </span>
+  );
+}
+
 function BookThumb({ item, fallbackCover }) {
   const fallbackText = String(item?.title || 'Sach').slice(0, 2).toUpperCase();
   const coverSrc = item?.cover || fallbackCover;
@@ -282,7 +312,7 @@ export default function MyOrdersPage() {
                         </p>
                       </div>
                       <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
-                        {formatOrderStatus(order.status)}
+                        {formatDisplayStatus(order.status)}
                       </span>
                     </div>
 
@@ -293,7 +323,18 @@ export default function MyOrdersPage() {
                       <p className="mt-1 text-xs font-medium text-amber-700">Yêu cầu hủy đang chờ người bán duyệt.</p>
                     ) : null}
 
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    {order.items?.length ? (
+                      <div className="mt-3 space-y-1 rounded-lg border border-slate-200 bg-white p-2">
+                        {order.items.map((item) => (
+                          <div key={`${order.id}-status-${item.order_item_id || item.id}`} className="flex items-center justify-between gap-3 text-xs">
+                            <span className="min-w-0 truncate text-slate-700">{item.title}</span>
+                            <LineItemStatusBadge status={item.status || order.status} />
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
                         {statusLower === 'shipped' ? (
                           <button
@@ -306,7 +347,7 @@ export default function MyOrdersPage() {
                           </button>
                         ) : null}
 
-                        {['pending', 'processing', 'shipped'].includes(statusLower) ? (
+                        {['pending', 'processing', 'shipped', 'partially_shipped'].includes(statusLower) ? (
                           <button
                             type="button"
                             className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
@@ -315,7 +356,7 @@ export default function MyOrdersPage() {
                           >
                             {cancellingId === order.id
                               ? 'Đang gửi...'
-                              : statusLower === 'shipped'
+                              : ['shipped', 'partially_shipped'].includes(statusLower)
                                 ? 'Yêu cầu hủy'
                                 : 'Hủy đơn'}
                           </button>

@@ -123,3 +123,35 @@ databricks.sql.exc.ServerOperationError: [UNRESOLVED_COLUMN.WITH_SUGGESTION] A c
 2026-04-24 16:27:24 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
 2026-05-23 09:23:46 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
 2026-05-23 09:23:53 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-05-23 14:10:31 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-05-23 14:10:33 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-05-23 14:10:37 | app.agent.service | ERROR | Agent stream failed | session_id=admin-1779545428452-5jf0hu | error=Query does not reference any allowed table.
+Traceback (most recent call last):
+  File "/app/app/agent/service.py", line 61, in stream_agent
+    async for chunk in graph.astream(
+  File "/usr/local/lib/python3.10/site-packages/langgraph/pregel/main.py", line 2939, in astream
+    async for _ in runner.atick(
+  File "/usr/local/lib/python3.10/site-packages/langgraph/pregel/_runner.py", line 401, in atick
+    _panic_or_proceed(
+  File "/usr/local/lib/python3.10/site-packages/langgraph/pregel/_runner.py", line 511, in _panic_or_proceed
+    raise exc
+  File "/usr/local/lib/python3.10/site-packages/langgraph/pregel/_retry.py", line 137, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+  File "/usr/local/lib/python3.10/site-packages/langgraph/_internal/_runnable.py", line 710, in ainvoke
+    input = await step.ainvoke(input, config, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/langgraph/_internal/_runnable.py", line 474, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/langchain_core/runnables/config.py", line 617, in run_in_executor
+    return await asyncio.get_running_loop().run_in_executor(
+  File "/usr/local/lib/python3.10/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/usr/local/lib/python3.10/site-packages/langchain_core/runnables/config.py", line 608, in wrapper
+    return func(*args, **kwargs)
+  File "/app/app/agent/nodes/validate_sql.py", line 29, in validate_sql_node
+    validated = validate_sql(state.generated_sql, allowed_tables=allowed_tables)
+  File "/app/app/security/sql_guard.py", line 24, in validate_sql
+    raise ValueError("Query does not reference any allowed table.")
+ValueError: Query does not reference any allowed table.
+2026-05-23 14:10:37 | app.api.service | ERROR | API error: stream_query | session_id=admin-1779545428452-5jf0hu | error=Query does not reference any allowed table.
+2026-05-23 14:10:52 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+2026-05-23 14:10:55 | google_genai.types | WARNING | Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated parsed result from text parts. Check the full candidates.content.parts accessor to get the full model response.

@@ -16,6 +16,8 @@ function normalizeOrder(raw = {}) {
   const items = (raw.items || []).map((item) => ({
     id: item.id ?? item.order_item_id ?? item.book_id,
     order_item_id: item.order_item_id ?? item.id,
+    seller_order_id: item.seller_order_id ?? null,
+    seller_id: item.seller_id ?? item.book?.seller_id ?? null,
     book_id: item.book_id ?? item.book?.book_id,
     title: item.title ?? item.book?.title ?? `Sách #${item.book_id}`,
     author: item.author ?? item.book?.author ?? null,

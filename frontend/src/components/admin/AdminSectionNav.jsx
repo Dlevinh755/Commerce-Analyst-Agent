@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 
 const links = [
-  { to: '/admin/dashboard', label: 'Bảng điều khiển' },
+  { to: '/admin/dashboard', label: 'AI Assistant' },
   { to: '/admin/buyers', label: 'Người mua' },
   { to: '/admin/sellers', label: 'Người bán' },
   { to: '/admin/products', label: 'Sản phẩm' },

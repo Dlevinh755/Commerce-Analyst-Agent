@@ -4,6 +4,7 @@ import { getErrorMessage } from '../../utils/errorMessage';
 import Toast from '../../components/common/Toast';
 import useAuth from '../../hooks/useAuth';
 import { formatCurrencyVND } from '../../utils/currency';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 
 const DATE_FILTERS = [
   { value: 'all', label: 'Khoảng thời gian' },
@@ -29,16 +30,18 @@ function normalizeStatus(value) {
 function formatOrderStatus(status) {
   const normalized = normalizeStatus(status);
   const labels = {
-    pending: 'Cho xu ly',
-    processing: 'Dang xu ly',
-    ready_to_ship: 'San sang giao',
-    shipped: 'Da gui',
-    delivered: 'Da giao',
-    completed: 'Hoan tat',
-    cancelled: 'Da huy',
-    canceled: 'Da huy',
+    pending: 'Chờ xử lý',
+    processing: 'Đang xử lý',
+    ready_to_ship: 'Sẵn sàng giao',
+    shipped: 'Đã gửi',
+    partially_shipped: 'Gửi một phần',
+    delivered: 'Đã giao',
+    partially_delivered: 'Giao một phần',
+    completed: 'Hoàn tất',
+    cancelled: 'Đã hủy',
+    canceled: 'Đã hủy',
   };
-  return labels[normalized] || normalized || 'Khong xac dinh';
+  return labels[normalized] || normalized || 'Không xác định';
 }
 
 function getStatusBadgeClass(status) {
@@ -46,7 +49,7 @@ function getStatusBadgeClass(status) {
   if (normalized === 'delivered' || normalized === 'completed') {
     return 'bg-emerald-100 text-emerald-700';
   }
-  if (normalized === 'shipped') {
+  if (normalized === 'shipped' || normalized === 'partially_shipped') {
     return 'bg-sky-100 text-sky-700';
   }
   if (normalized === 'pending' || normalized === 'processing' || normalized === 'ready_to_ship') {
@@ -62,9 +65,34 @@ function isTerminalOrderStatus(status) {
   return ['cancelled', 'canceled', 'delivered', 'returned'].includes(normalizeStatus(status));
 }
 
+function getSellerItems(order, sellerId) {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  const numericSellerId = Number(sellerId || 0);
+  if (!numericSellerId) {
+    return items;
+  }
+  return items.filter((item) => Number(item?.seller_id ?? item?.book?.seller_id) === numericSellerId);
+}
+
+function getItemTitle(item) {
+  return item?.title || item?.book?.title || `Sản phẩm #${item?.book_id || item?.id || '-'}`;
+}
+
+function getItemImageUrl(item) {
+  return resolveMediaUrl(item?.image_url || item?.cover || item?.book?.image_url || item?.book?.cover || '');
+}
+
+function getItemUnitPrice(item) {
+  return Number(item?.unit_price ?? item?.price ?? 0);
+}
+
+function getItemLineTotal(item) {
+  return Number(item?.subtotal ?? item?.line_total ?? getItemUnitPrice(item) * Number(item?.quantity || 0));
+}
+
 export default function OrdersPage() {
   const user = useAuth((state) => state.user);
-  const currentSellerId = Number(user?.user_id || 0);
+  const currentSellerId = Number(user?.user_id ?? user?.id ?? user?.sub ?? 0);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -168,8 +196,9 @@ export default function OrdersPage() {
       }
 
       if (statusFilter) {
-        const normalized = normalizeStatus(order.status);
-        if (normalized !== statusFilter) {
+        const orderStatus = normalizeStatus(order.status);
+        const sellerStatus = normalizeStatus(order.mySellerStatus);
+        if (orderStatus !== statusFilter && sellerStatus !== statusFilter) {
           return false;
         }
       }
@@ -277,6 +306,7 @@ export default function OrdersPage() {
             <option value="pending">Chờ xử lý</option>
             <option value="processing">Đang xử lý</option>
             <option value="shipped">Đã gửi</option>
+            <option value="partially_shipped">Gửi một phần</option>
             <option value="delivered">Đã giao</option>
             <option value="cancelled">Đã hủy</option>
           </select>
@@ -310,6 +340,7 @@ export default function OrdersPage() {
                   <th className="px-3 py-3 text-left font-medium">Mã đơn</th>
                   <th className="px-3 py-3 text-left font-medium">Người mua</th>
                   <th className="px-3 py-3 text-left font-medium">Ngày đặt</th>
+                  <th className="px-3 py-3 text-left font-medium">Sản phẩm cần gửi</th>
                   <th className="px-3 py-3 text-left font-medium">Tổng tiền</th>
                   <th className="px-3 py-3 text-left font-medium">Trạng thái đơn</th>
                   <th className="px-3 py-3 text-left font-medium">Trạng thái mặt hàng</th>
@@ -321,15 +352,17 @@ export default function OrdersPage() {
                   const status = normalizeStatus(order.status);
                   const cancellationStatus = normalizeStatus(order.cancellation_status || 'none');
                   const mySellerStatus = normalizeStatus(order.mySellerOrder?.status || order.status);
+                  const mySellerCancellationStatus = normalizeStatus(order.mySellerOrder?.cancellation_status || 'none');
                   const canMarkShipped = !isTerminalOrderStatus(status) && (
                     mySellerStatus
                       ? ['pending', 'processing', 'ready_to_ship'].includes(mySellerStatus)
                       : status === 'pending' || status === 'processing'
-                  );
-                  const hasPendingCancellation = status === 'shipped' && cancellationStatus === 'pending';
-                  const sellerItems = Array.isArray(order.items)
-                    ? order.items.filter((item) => Number(item?.seller_id) === currentSellerId)
-                    : [];
+                  ) && cancellationStatus !== 'pending';
+                  const hasPendingCancellation =
+                    ['shipped', 'partially_shipped'].includes(status) &&
+                    cancellationStatus === 'pending' &&
+                    mySellerCancellationStatus === 'pending';
+                  const sellerItems = getSellerItems(order, currentSellerId);
                   const pendingItemCount = sellerItems.filter((item) => {
                     const itemStatus = normalizeStatus(item?.status);
                     return !itemStatus || ['pending', 'processing', 'ready_to_ship'].includes(itemStatus);
@@ -343,6 +376,41 @@ export default function OrdersPage() {
                       <td className="px-3 py-3 font-medium">#{order.order_id}</td>
                       <td className="px-3 py-3">{order.buyerLabel}</td>
                       <td className="px-3 py-3 text-slate-600">{formatDate(order.order_date)}</td>
+                      <td className="px-3 py-3">
+                        {sellerItems.length ? (
+                          <div className="min-w-[260px] space-y-2">
+                            {sellerItems.map((item) => {
+                              const imageUrl = getItemImageUrl(item);
+                              const itemStatus = normalizeStatus(item?.status || mySellerStatus || order.status);
+                              return (
+                                <div key={item.order_item_id || item.id || `${order.order_id}-${item.book_id}`} className="flex gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                                  <div className="h-12 w-9 flex-shrink-0 overflow-hidden rounded border border-slate-200 bg-white">
+                                    {imageUrl ? (
+                                      <img
+                                        src={imageUrl}
+                                        alt={getItemTitle(item)}
+                                        className="h-full w-full object-cover"
+                                        loading="lazy"
+                                      />
+                                    ) : null}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate font-medium text-slate-900">{getItemTitle(item)}</p>
+                                    <p className="text-xs text-slate-500">
+                                      SL: {Number(item?.quantity || 0)} • {formatCurrency(getItemLineTotal(item))}
+                                    </p>
+                                    <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${getStatusBadgeClass(itemStatus)}`}>
+                                      {formatOrderStatus(itemStatus || 'pending')}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">Không có sản phẩm của seller này</span>
+                        )}
+                      </td>
                       <td className="px-3 py-3">{formatCurrency(order.total_amount)}</td>
                       <td className="px-3 py-3">
                         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}>

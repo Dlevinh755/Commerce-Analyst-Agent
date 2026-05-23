@@ -6,7 +6,7 @@ export default function AdminDashboardPage() {
   return (
     <section className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">Bảng điều khiển quản trị</h1>
+        <h1 className="text-2xl font-semibold">AI Assistant quản trị</h1>
         <p className="mt-1 text-slate-600">
           Sử dụng các khu vực riêng để quản lý người mua, người bán, sản phẩm và đơn hàng.
         </p>

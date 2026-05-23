@@ -116,12 +116,53 @@ with engine.begin() as connection:
                 order_id INTEGER NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
                 seller_id INTEGER NOT NULL,
                 status seller_order_status NOT NULL DEFAULT 'pending',
+                cancellation_status VARCHAR(20) NOT NULL DEFAULT 'none',
+                cancellation_requested_at TIMESTAMP NULL,
+                cancellation_reason TEXT NULL,
+                cancellation_reviewed_at TIMESTAMP NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT uq_seller_order_order_seller UNIQUE (order_id, seller_id)
             )
             """
         )
+    )
+    connection.execute(
+        text("ALTER TABLE seller_orders ADD COLUMN IF NOT EXISTS cancellation_status VARCHAR(20) NOT NULL DEFAULT 'none'")
+    )
+    connection.execute(
+        text("ALTER TABLE seller_orders ADD COLUMN IF NOT EXISTS cancellation_requested_at TIMESTAMP NULL")
+    )
+    connection.execute(
+        text("ALTER TABLE seller_orders ADD COLUMN IF NOT EXISTS cancellation_reason TEXT NULL")
+    )
+    connection.execute(
+        text("ALTER TABLE seller_orders ADD COLUMN IF NOT EXISTS cancellation_reviewed_at TIMESTAMP NULL")
+    )
+    connection.execute(
+        text("UPDATE seller_orders SET cancellation_status = :status WHERE cancellation_status IS NULL"),
+        {"status": CancellationStatus.none.value},
+    )
+    connection.execute(
+        text(
+            """
+            UPDATE seller_orders so
+            SET
+                cancellation_status = :pending,
+                cancellation_requested_at = o.cancellation_requested_at,
+                cancellation_reason = o.cancellation_reason,
+                cancellation_reviewed_at = NULL
+            FROM orders o
+            WHERE so.order_id = o.order_id
+              AND o.cancellation_status = :pending
+              AND so.status = 'shipped'
+              AND so.cancellation_status = :none
+            """
+        ),
+        {
+            "pending": CancellationStatus.pending.value,
+            "none": CancellationStatus.none.value,
+        },
     )
     connection.execute(
         text("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS seller_order_id INTEGER NULL")

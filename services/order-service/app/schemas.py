@@ -94,6 +94,10 @@ class SellerOrderResponse(BaseModel):
     order_id: int
     seller_id: int
     status: SellerOrderStatus
+    cancellation_status: CancellationStatus = CancellationStatus.none
+    cancellation_requested_at: datetime | None = None
+    cancellation_reason: str | None = None
+    cancellation_reviewed_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

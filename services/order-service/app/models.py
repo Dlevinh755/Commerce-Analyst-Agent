@@ -186,6 +186,10 @@ class SellerOrder(Base):
         nullable=False,
         default=SellerOrderStatus.pending,
     )
+    cancellation_status = Column(String(20), nullable=False, default=CancellationStatus.none.value)
+    cancellation_requested_at = Column(DateTime, nullable=True)
+    cancellation_reason = Column(Text, nullable=True)
+    cancellation_reviewed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.current_timestamp())
     updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
 

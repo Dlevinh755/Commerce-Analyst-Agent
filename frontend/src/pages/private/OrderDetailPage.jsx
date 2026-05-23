@@ -39,6 +39,48 @@ function formatPaymentStatus(status) {
   return labels[normalized] || normalized || 'Đang chờ';
 }
 
+function getLineItemStatusBadgeClass(status) {
+  const normalized = String(status || '').toLowerCase();
+  if (normalized === 'delivered' || normalized === 'completed') {
+    return 'bg-emerald-100 text-emerald-700';
+  }
+  if (normalized === 'shipped' || normalized === 'partially_shipped') {
+    return 'bg-sky-100 text-sky-700';
+  }
+  if (normalized === 'cancelled' || normalized === 'canceled') {
+    return 'bg-rose-100 text-rose-700';
+  }
+  if (normalized === 'pending' || normalized === 'processing' || normalized === 'ready_to_ship') {
+    return 'bg-amber-100 text-amber-700';
+  }
+  return 'bg-slate-100 text-slate-700';
+}
+
+function formatLineItemStatus(status) {
+  const normalized = String(status || '').toLowerCase();
+  const labels = {
+    pending: 'Chờ xử lý',
+    processing: 'Đang xử lý',
+    ready_to_ship: 'Sẵn sàng gửi',
+    shipped: 'Đã gửi',
+    partially_shipped: 'Gửi một phần',
+    delivered: 'Đã giao',
+    partially_delivered: 'Giao một phần',
+    cancelled: 'Đã hủy',
+    canceled: 'Đã hủy',
+    returned: 'Đã trả',
+  };
+  return labels[normalized] || formatOrderStatus(status);
+}
+
+function LineItemStatusBadge({ status }) {
+  return (
+    <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${getLineItemStatusBadgeClass(status)}`}>
+      {formatLineItemStatus(status)}
+    </span>
+  );
+}
+
 export default function OrderDetailPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -237,7 +279,7 @@ export default function OrderDetailPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Đơn hàng #{order.id}</h1>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium">{formatOrderStatus(order.status)}</span>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium">{formatLineItemStatus(order.status)}</span>
           {String(order.status).toLowerCase() === 'shipped' ? (
             <button
               type="button"
@@ -248,14 +290,14 @@ export default function OrderDetailPage() {
               {confirming ? 'Đang xác nhận...' : 'Xác nhận đã nhận'}
             </button>
           ) : null}
-          {['pending', 'processing', 'shipped'].includes(String(order.status).toLowerCase()) ? (
+          {['pending', 'processing', 'shipped', 'partially_shipped'].includes(String(order.status).toLowerCase()) ? (
             <button
               type="button"
               className="rounded-lg border border-rose-300 px-3 py-1 text-sm font-medium text-rose-700"
               onClick={onCancelOrder}
               disabled={cancelling || String(order.cancellation_status || 'none').toLowerCase() === 'pending'}
             >
-              {cancelling ? 'Đang gửi...' : String(order.status).toLowerCase() === 'shipped' ? 'Yêu cầu hủy' : 'Hủy đơn'}
+              {cancelling ? 'Đang gửi...' : ['shipped', 'partially_shipped'].includes(String(order.status).toLowerCase()) ? 'Yêu cầu hủy' : 'Hủy đơn'}
             </button>
           ) : null}
           {canRetryVnpay ? (
@@ -284,9 +326,12 @@ export default function OrderDetailPage() {
 
               return (
                 <div key={item.id} className="border-b border-slate-100 pb-3 last:border-none last:pb-0">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="font-medium">{item.title}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium">{item.title}</p>
+                        <LineItemStatusBadge status={item.status || order.status} />
+                      </div>
                       <p className="text-sm text-slate-500">{formatCurrencyVND(item.price)} x {item.quantity}</p>
                     </div>
                     <p className="font-medium">{formatCurrencyVND(item.line_total || item.price * item.quantity)}</p>

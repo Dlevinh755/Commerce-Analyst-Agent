@@ -59,16 +59,6 @@ services:
       KAFKA_CLUSTERS_0_NAME: local_kraft
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
 
-  databrick-mock:
-    build: ./mock-databrick
-    container_name: commerce-databricks-mock
-    ports:
-      - "${DATABRICKS_MOCK_PORT:-8081}:8081"
-    volumes:
-      - .:/app
-      - ./data:/app/data 
-    environment:
-      - PYTHONUNBUFFERED=1
 
   gateway:
     build: ./gateway

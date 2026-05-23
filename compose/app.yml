@@ -1,56 +1,8 @@
+name: commerce-analyst-agent
+
 services:
-  postgres-db:
-    image: postgres:15-alpine
-    container_name: commerce-postgres
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432" 
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  kafka:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: commerce-kafka
-    ports:
-      - "${KAFKA_PORT:-9092}:9092"
-    environment:
-      - KAFKA_NODE_ID=1
-      - KAFKA_PROCESS_ROLES=controller,broker
-      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
-      - CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk # Bắt buộc có mã base64 này cho Confluent KRaft
-      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT_INTERNAL
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
-      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
-    volumes:
-      - kafka_data:/var/lib/kafka/data # Đường dẫn chuẩn của Confluent
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: commerce-kafka-ui
-    depends_on:
-      - kafka
-    ports:
-      - "${KAFKA_UI_PORT:-8080}:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local_kraft
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-
-
   gateway:
-    build: ./gateway
+    build: ../gateway
     container_name: commerce-gateway
     restart: always
     ports:
@@ -86,19 +38,19 @@ services:
         condition: service_healthy
 
   auth-service:
-    build: ./services/auth-service
+    build: ../services/auth-service
     container_name: commerce-auth-service
     restart: always
     ports:
       - "${AUTH_SERVICE_PORT:-8000}:8000"
     env_file:
-      - .env
+      - ../.env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - DEV_AUTO_SEED=true
       - DEV_SEED_FILE=/app/dev-seeds.json
     volumes:
-      - ./dev-seeds.json:/app/dev-seeds.json:ro
+      - ../dev-seeds.json:/app/dev-seeds.json:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 5s
@@ -107,17 +59,17 @@ services:
       start_period: 10s
     depends_on:
       postgres-db:
-          condition: service_healthy
+        condition: service_healthy
     networks:
       - default
       - commerce-network
 
   product-service:
-    build: ./services/product-service
+    build: ../services/product-service
     container_name: commerce-product-service
     restart: always
     env_file:
-      - .env
+      - ../.env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - PUBLIC_PRODUCTS_BASE_URL=${PUBLIC_PRODUCTS_BASE_URL:-/api/v1/products}
@@ -126,8 +78,8 @@ services:
     ports:
       - "${PRODUCT_SERVICE_PORT:-8001}:8001"
     volumes:
-      - ./services/product-service:/app
-      - ./dev-seeds.json:/app/dev-seeds.json:ro
+      - ../services/product-service:/app
+      - ../dev-seeds.json:/app/dev-seeds.json:ro
     depends_on:
       auth-service:
         condition: service_healthy
@@ -141,17 +93,17 @@ services:
       start_period: 10s
 
   cart-service:
-    build: ./services/cart-service
+    build: ../services/cart-service
     container_name: commerce-cart-service
     restart: always
     env_file:
-      - .env
+      - ../.env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
     ports:
       - "${CART_SERVICE_PORT:-8002}:8002"
     volumes:
-      - .:/services/cart-service
+      - ..:/services/cart-service
     depends_on:
       - postgres-db
     networks:
@@ -159,11 +111,11 @@ services:
       - commerce-network
 
   order_service:
-    build: ./services/order-service
+    build: ../services/order-service
     container_name: commerce-order-service
     restart: always
     env_file:
-      - .env
+      - ../.env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - DEV_AUTO_SEED=true
@@ -173,48 +125,48 @@ services:
     ports:
       - "${ORDER_SERVICE_PORT:-8003}:8003"
     volumes:
-      - ./services/order-service:/app
-      - ./dev-seeds.json:/seed/dev-seeds.json:ro
+      - ../services/order-service:/app
+      - ../dev-seeds.json:/seed/dev-seeds.json:ro
     depends_on:
       product-service:
         condition: service_healthy
 
   payment_service:
-    build: ./services/payment-service
+    build: ../services/payment-service
     container_name: commerce-payment-service
     restart: always
     env_file:
-      - .env
+      - ../.env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
     ports:
       - "${PAYMENT_SERVICE_PORT:-8004}:8004"
     volumes:
-      - ./services/payment-service:/app
+      - ../services/payment-service:/app
     depends_on:
       - postgres-db
 
   payout_service:
-    build: ./services/payout-service
+    build: ../services/payout-service
     container_name: commerce-payout-service
     restart: always
     env_file:
-      - .env
+      - ../.env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
     ports:
       - "${PAYOUT_SERVICE_PORT:-8008}:8008"
     volumes:
-      - ./services/payout-service:/app
+      - ../services/payout-service:/app
     depends_on:
       - postgres-db
 
   review_service:
-    build: ./services/review-service
+    build: ../services/review-service
     container_name: commerce-review-service
     restart: always
     env_file:
-      - .env
+      - ../.env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - ORDER_SERVICE_URL=http://order_service:8003
@@ -227,11 +179,11 @@ services:
       - product-service
 
   vnpay_service:
-    build: ./services/vnpay-service
+    build: ../services/vnpay-service
     container_name: commerce-vnpay-service
     restart: always
     env_file:
-      - .env
+      - ../.env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - PAYMENT_SERVICE_URL=http://payment_service:8004
@@ -239,32 +191,32 @@ services:
     ports:
       - "${VNPAY_SERVICE_PORT:-8005}:8005"
     volumes:
-      - ./services/vnpay-service:/app
+      - ../services/vnpay-service:/app
     depends_on:
       - postgres-db
 
   analytics-agent:
-    build: ./services/analytics-agent-service
+    build: ../services/analytics-agent-service
     container_name: commerce-analytics-agent-service
     restart: always
     env_file:
-      - .env
+      - ../.env
     environment:
       - ANALYTICS_AGENT_ROOT_PATH=/api/v1/analytics
     ports:
       - "${ANALYTICS_AGENT_SERVICE_PORT:-8007}:8000"
     volumes:
-      - ./services/analytics-agent-service:/app
+      - ../services/analytics-agent-service:/app
 
   frontend:
     build:
-      context: ./frontend
+      context: ../frontend
       dockerfile: dockerfile
     container_name: commerce-frontend
     ports:
       - "${FRONTEND_DOCKER_PORT:-5175}:5173"
     volumes:
-      - ./frontend:/app
+      - ../frontend:/app
       - /app/node_modules
     environment:
       - VITE_API_BASE_URL=/api/v1
@@ -276,16 +228,3 @@ services:
       - gateway
     networks:
       - default
-    
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: commerce-cloudflared
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
-  
-volumes:
-  postgres_data:
-  kafka_data:
-networks:
-  commerce-network:
-    driver: bridge

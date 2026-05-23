@@ -6,6 +6,7 @@ const links = [
   { to: '/admin/sellers', label: 'Người bán' },
   { to: '/admin/products', label: 'Sản phẩm' },
   { to: '/admin/orders', label: 'Đơn hàng' },
+  { to: '/admin/payouts', label: 'Rút tiền' },
 ];
 
 export default function AdminSectionNav() {

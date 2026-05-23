@@ -10,8 +10,12 @@ export function getDefaultRouteByRole(role) {
   }
 
   if (normalized === 'seller') {
-    return '/seller/dashboard';
+    return '/seller/orders';
   }
 
-  return '/dashboard';
+  if (normalized === 'buyer') {
+    return '/profile';
+  }
+
+  return '/profile';
 }

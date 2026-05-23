@@ -198,8 +198,8 @@ export default function MyOrdersPage() {
 
     setRetryingId(orderId);
     try {
-      const total = Number(order?.pricing?.total ?? order?.total ?? 0);
-      const amountVnd = Math.max(1, Math.round(total * 25000));
+      const total = Number(order?.pricing?.total ?? order?.total_amount ?? order?.total ?? 0);
+      const amountVnd = Math.max(1, Math.round(total));
 
       const { data } = await vnpayService.createPaymentUrl({
         order_id: String(orderId),

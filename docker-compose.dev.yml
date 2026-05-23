@@ -133,7 +133,7 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
-      - PUBLIC_PRODUCTS_BASE_URL=${PUBLIC_PRODUCTS_BASE_URL:-http://localhost/api/v1/products}
+      - PUBLIC_PRODUCTS_BASE_URL=${PUBLIC_PRODUCTS_BASE_URL:-/api/v1/products}
       - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-me-internal-secret}
       - DEV_AUTO_SEED=true
       - DEV_SEED_FILE=/app/dev-seeds.json
@@ -181,15 +181,15 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - DEV_AUTO_SEED=true
-      - DEV_SEED_FILE=/app/dev-seeds.json
+      - DEV_SEED_FILE=/seed/dev-seeds.json
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - PRODUCT_SERVICE_URL=http://product-service:8001
       - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-me-internal-secret}
     ports:
       - "${ORDER_SERVICE_PORT:-8003}:8003"
     volumes:
-      - .:/services/order-service
-      - ./dev-seeds.json:/app/dev-seeds.json:ro
+      - ./services/order-service:/app
+      - ./dev-seeds.json:/seed/dev-seeds.json:ro
     depends_on:
       product-service:
         condition: service_healthy

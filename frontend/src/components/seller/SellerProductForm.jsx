@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { sellerProductService } from '../../services/sellerProductService';
 import { getErrorMessage } from '../../utils/errorMessage';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 
 const defaultForm = {
   title: '',
@@ -12,16 +13,34 @@ const defaultForm = {
   category_name: '',
 };
 
+function formatInitialPrice(value) {
+  if (value === null || value === undefined || value === '') {
+    return '';
+  }
+
+  const numberValue = Number(String(value).trim());
+  if (Number.isFinite(numberValue)) {
+    return String(Math.round(numberValue));
+  }
+
+  return String(value);
+}
+
+function parseVndPriceInput(value) {
+  const digitsOnly = String(value || '').replace(/[^\d]/g, '');
+  if (!digitsOnly) {
+    return NaN;
+  }
+  return Number(digitsOnly);
+}
+
 function normalizeInitialValues(initialValues = {}) {
   return {
     ...defaultForm,
     ...initialValues,
     category_name:
       initialValues.category?.name ?? initialValues.category_name ?? initialValues.categoryName ?? '',
-    price:
-      initialValues.price === null || initialValues.price === undefined
-        ? ''
-        : String(initialValues.price),
+    price: formatInitialPrice(initialValues.price),
     stock_quantity:
       initialValues.stock_quantity === null || initialValues.stock_quantity === undefined
         ? ''
@@ -69,10 +88,10 @@ export default function SellerProductForm({
     const payload = {
       title: form.title.trim(),
       author: form.author.trim(),
-      price: Number(form.price),
+      price: parseVndPriceInput(form.price),
       stock_quantity: Number(form.stock_quantity),
       description: form.description.trim() || null,
-      image_url: form.image_url.trim() || null,
+      image_url: resolveMediaUrl(form.image_url) || null,
       category_name: form.category_name.trim() || null,
     };
 
@@ -81,8 +100,8 @@ export default function SellerProductForm({
       return;
     }
 
-    if (Number.isNaN(payload.price) || payload.price < 0) {
-      setError('Giá phải là số hợp lệ lớn hơn hoặc bằng 0.');
+    if (!Number.isFinite(payload.price) || payload.price < 0) {
+      setError('Giá phải là số tiền VND hợp lệ lớn hơn hoặc bằng 0.');
       return;
     }
 
@@ -122,10 +141,9 @@ export default function SellerProductForm({
         />
         <input
           className="input"
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="Giá"
+          type="text"
+          inputMode="numeric"
+          placeholder="Giá (vd: 100000 hoặc 100.000)"
           value={form.price}
           onChange={(event) => handleChange('price', event.target.value)}
         />
@@ -167,7 +185,7 @@ export default function SellerProductForm({
         ) : null}
         {form.image_url ? (
           <img
-            src={form.image_url}
+            src={resolveMediaUrl(form.image_url)}
             alt="Ảnh bìa hiện tại"
             className="sm:col-span-2 h-48 w-full rounded-lg border border-slate-200 object-cover"
           />

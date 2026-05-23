@@ -58,6 +58,10 @@ function getStatusBadgeClass(status) {
   return 'bg-slate-100 text-slate-700';
 }
 
+function isTerminalOrderStatus(status) {
+  return ['cancelled', 'canceled', 'delivered', 'returned'].includes(normalizeStatus(status));
+}
+
 export default function OrdersPage() {
   const user = useAuth((state) => state.user);
   const currentSellerId = Number(user?.user_id || 0);
@@ -317,9 +321,11 @@ export default function OrdersPage() {
                   const status = normalizeStatus(order.status);
                   const cancellationStatus = normalizeStatus(order.cancellation_status || 'none');
                   const mySellerStatus = normalizeStatus(order.mySellerOrder?.status || order.status);
-                  const canMarkShipped = mySellerStatus
-                    ? ['pending', 'processing', 'ready_to_ship'].includes(mySellerStatus)
-                    : status === 'pending' || status === 'processing';
+                  const canMarkShipped = !isTerminalOrderStatus(status) && (
+                    mySellerStatus
+                      ? ['pending', 'processing', 'ready_to_ship'].includes(mySellerStatus)
+                      : status === 'pending' || status === 'processing'
+                  );
                   const hasPendingCancellation = status === 'shipped' && cancellationStatus === 'pending';
                   const sellerItems = Array.isArray(order.items)
                     ? order.items.filter((item) => Number(item?.seller_id) === currentSellerId)

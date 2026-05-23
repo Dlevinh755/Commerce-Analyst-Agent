@@ -150,8 +150,8 @@ export default function OrderDetailPage() {
         throw new Error('Mã đơn hàng không hợp lệ để thanh toán lại VNPay.');
       }
 
-      const total = Number(order?.pricing?.total ?? order?.total ?? 0);
-      const amountVnd = Math.max(1, Math.round(total * 25000));
+      const total = Number(order?.pricing?.total ?? order?.total_amount ?? order?.total ?? 0);
+      const amountVnd = Math.max(1, Math.round(total));
 
       const { data } = await vnpayService.createPaymentUrl({
         order_id: String(orderId),

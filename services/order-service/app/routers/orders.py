@@ -78,11 +78,16 @@ def restore_order_stock(db: Session, order: Order) -> None:
 
 def mark_payment_completed_on_delivery(order: Order, payment: Payment | None) -> None:
     if not payment:
-        return
+        raise HTTPException(status_code=400, detail="Order payment is required before delivery confirmation")
 
     payment_method = str(payment.payment_method or "").strip().upper()
     if payment.payment_status == PaymentStatus.refunded:
         raise HTTPException(status_code=400, detail="Refunded payment cannot complete this order")
+    if payment.payment_status == PaymentStatus.failed:
+        raise HTTPException(status_code=400, detail="Failed payment cannot complete this order")
+
+    if payment_method == "VNPAY" and payment.payment_status != PaymentStatus.completed:
+        raise HTTPException(status_code=400, detail="VNPay payment must be completed before delivery confirmation")
 
     if payment_method != "VNPAY" and payment.payment_status == PaymentStatus.pending:
         payment.payment_status = PaymentStatus.completed
@@ -90,8 +95,24 @@ def mark_payment_completed_on_delivery(order: Order, payment: Payment | None) ->
             payment.transaction_code = f"COD-DELIVERED-{order.order_id}"
 
 
+def ensure_order_can_be_shipped(order: Order, payment: Payment | None) -> None:
+    if not payment:
+        raise HTTPException(status_code=400, detail="Order payment is required before shipping")
+
+    payment_method = str(payment.payment_method or "").strip().upper()
+    if payment.payment_status in {PaymentStatus.failed, PaymentStatus.refunded}:
+        raise HTTPException(status_code=400, detail="Failed or refunded payment cannot be shipped")
+
+    if payment_method == "VNPAY" and payment.payment_status != PaymentStatus.completed:
+        raise HTTPException(status_code=400, detail="VNPay order must be paid before shipping")
+
+
 def refund_payment_to_buyer(db: Session, order: Order, payment: Payment | None) -> bool:
     if not payment or payment.payment_status != PaymentStatus.completed:
+        return False
+
+    payment_method = str(payment.payment_method or "").strip().upper()
+    if payment_method != "VNPAY":
         return False
 
     buyer = (
@@ -119,13 +140,19 @@ def finalize_order_cancellation(
     order.status = OrderStatus.cancelled
     order.cancellation_status = cancellation_status.value
     order.cancellation_reviewed_at = utc_now_naive()
+    for item in order.items:
+        item.status = OrderItemStatus.cancelled
+    for seller_order in order.seller_orders:
+        seller_order.status = SellerOrderStatus.cancelled
     return refunded
 
 
 def finalize_order_delivery(db: Session, order: Order) -> None:
     seller_amounts: dict[int, Decimal] = {}
     for item in order.items:
-        seller_id = item.book.seller_id
+        seller_id = item.seller_id or (item.book.seller_id if item.book else None)
+        if seller_id is None:
+            raise HTTPException(status_code=400, detail="Order item seller is missing")
         line_amount = Decimal(item.unit_price) * item.quantity
         seller_amounts[seller_id] = seller_amounts.get(seller_id, Decimal("0")) + line_amount
 
@@ -147,32 +174,20 @@ def finalize_order_delivery(db: Session, order: Order) -> None:
             detail=f"Seller accounts not found for seller_id(s): {missing_sellers}",
         )
 
-    sellers_without_account = [
-        seller_id
-        for seller_id, seller in seller_by_id.items()
-        if not seller.account_number
-    ]
-    if sellers_without_account:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Seller bank account missing for seller_id(s): {sorted(sellers_without_account)}",
-        )
-
     for seller_id, amount in seller_amounts.items():
         seller = seller_by_id[seller_id]
         seller.balance = Decimal(seller.balance) + amount
 
-    # Update order status to delivered
     order.status = OrderStatus.delivered
     order.delivered_at = utc_now_naive()
-    
-    # Update all order items status to delivered
+
     for item in order.items:
         if item.status != OrderItemStatus.delivered:
             item.status = OrderItemStatus.delivered
-    
-    # Kafka event published after DB commit by caller
-    _order_ref_for_kafka = order
+
+    for seller_order in order.seller_orders:
+        if seller_order.status != SellerOrderStatus.delivered:
+            seller_order.status = SellerOrderStatus.delivered
 
 
 def sync_book_purchase_counts(order: Order) -> None:
@@ -204,10 +219,20 @@ def sync_book_purchase_counts(order: Order) -> None:
 
 
 def serialize_order(order: Order):
+    order_status = OrderStatus(order.status.value if hasattr(order.status, "value") else order.status)
+    override_child_status = None
+    if order_status == OrderStatus.cancelled:
+        override_child_status = OrderItemStatus.cancelled
+    elif order_status == OrderStatus.delivered:
+        override_child_status = OrderItemStatus.delivered
+    elif order_status == OrderStatus.returned:
+        override_child_status = OrderItemStatus.returned
+
     items = []
     for item in order.items:
         unit_price = Decimal(item.unit_price)
         subtotal = unit_price * item.quantity
+        item_status = override_child_status or item.status
         items.append(
             {
                 "order_item_id": item.order_item_id,
@@ -216,18 +241,22 @@ def serialize_order(order: Order):
                 "book_id": item.book_id,
                 "quantity": item.quantity,
                 "unit_price": unit_price,
-                "status": item.status,
+                "status": item_status,
                 "subtotal": subtotal,
                 "book": item.book,
             }
         )
+
+    seller_override_status = None
+    if override_child_status is not None:
+        seller_override_status = SellerOrderStatus(override_child_status.value)
 
     seller_orders = [
         {
             "seller_order_id": so.seller_order_id,
             "order_id": so.order_id,
             "seller_id": so.seller_id,
-            "status": so.status,
+            "status": seller_override_status or so.status,
             "created_at": so.created_at,
             "updated_at": so.updated_at,
         }
@@ -603,7 +632,7 @@ def cancel_my_order(
     if order.status == OrderStatus.delivered:
         raise HTTPException(status_code=400, detail="Delivered order cannot be cancelled")
 
-    if order.status == OrderStatus.shipped:
+    if order.status in {OrderStatus.shipped, OrderStatus.partially_shipped}:
         if cancellation_status == CancellationStatus.pending:
             raise HTTPException(status_code=400, detail="Cancellation request is already pending seller approval")
 
@@ -619,7 +648,7 @@ def cancel_my_order(
 
         return {"message": "Cancellation request sent to seller"}
 
-    if order.status not in [OrderStatus.pending, OrderStatus.processing]:
+    if order.status not in [OrderStatus.pending, OrderStatus.processing, OrderStatus.ready_to_ship]:
         raise HTTPException(
             status_code=400,
             detail="Only pending or processing orders can be cancelled",
@@ -656,7 +685,7 @@ def approve_cancellation_request(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if order.status != OrderStatus.shipped:
+    if order.status not in {OrderStatus.shipped, OrderStatus.partially_shipped}:
         raise HTTPException(status_code=400, detail="Only shipped orders can be approved for cancellation")
 
     if normalize_cancellation_status(order.cancellation_status) != CancellationStatus.pending:
@@ -712,7 +741,7 @@ def reject_cancellation_request(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if order.status != OrderStatus.shipped:
+    if order.status not in {OrderStatus.shipped, OrderStatus.partially_shipped}:
         raise HTTPException(status_code=400, detail="Only shipped orders can reject a cancellation request")
 
     if normalize_cancellation_status(order.cancellation_status) != CancellationStatus.pending:
@@ -832,6 +861,7 @@ def mark_order_as_shipped_by_seller(
     if order.status == OrderStatus.shipped:
         raise HTTPException(status_code=400, detail="Order has already been marked as shipped")
 
+    ensure_order_can_be_shipped(order, order.payment)
     ensure_seller_orders_initialized(db, order)
 
     if requester_role != "admin":
@@ -903,6 +933,12 @@ def update_seller_order_status(
     if seller_order.status == data.status:
         return seller_order
 
+    if data.status == SellerOrderStatus.delivered:
+        raise HTTPException(
+            status_code=400,
+            detail="Seller order delivery must be confirmed by the buyer",
+        )
+
     try:
         seller_order.status = data.status
 
@@ -951,6 +987,12 @@ def update_order_item_status(
 
     if requester_role != "admin" and requester_id != seller_id:
         raise HTTPException(status_code=403, detail="You can only update your own order items")
+
+    if data.status == OrderItemStatus.delivered:
+        raise HTTPException(
+            status_code=400,
+            detail="Order item delivery must be confirmed by the buyer",
+        )
 
     try:
         item.status = data.status

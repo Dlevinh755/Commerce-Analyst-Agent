@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { cartService } from '../services/cartService';
 import { getAccessToken } from '../utils/token';
+import { resolveMediaUrl } from '../utils/mediaUrl';
 
 const CART_LOG_PREFIX = '[cartStore]';
 const devLog = (...args) => {
@@ -20,15 +21,16 @@ function normalizeCartItem(raw = {}) {
     author: book.author ?? 'Không rõ tác giả',
     price: Number(raw.unit_price ?? book.price ?? 0),
     quantity: Number(raw.quantity ?? 0),
-    cover:
+    cover: resolveMediaUrl(
       book.image_url ??
-      book.cover ??
-      book.image ??
-      book.thumbnail ??
-      raw.image_url ??
-      raw.cover ??
-      raw.image ??
-      '',
+        book.cover ??
+        book.image ??
+        book.thumbnail ??
+        raw.image_url ??
+        raw.cover ??
+        raw.image ??
+        ''
+    ),
     stock: Number(book.stock_quantity ?? 0),
   };
 }

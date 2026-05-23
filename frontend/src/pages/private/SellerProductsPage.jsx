@@ -5,6 +5,7 @@ import Toast from '../../components/common/Toast';
 import { sellerProductService } from '../../services/sellerProductService';
 import { getErrorMessage } from '../../utils/errorMessage';
 import { formatCurrencyVND } from '../../utils/currency';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 
 const FALLBACK_COVER =
   'https://images.unsplash.com/photo-1526243741027-444d633d7365?auto=format&fit=crop&w=300&q=60';
@@ -114,7 +115,7 @@ export default function SellerProductsPage() {
                     <div className="h-16 w-12 overflow-hidden rounded border border-slate-200 bg-slate-100">
                       {product.image_url ? (
                         <img
-                          src={product.image_url}
+                          src={resolveMediaUrl(product.image_url)}
                           alt={product.title}
                           className="h-full w-full object-cover"
                           loading="lazy"

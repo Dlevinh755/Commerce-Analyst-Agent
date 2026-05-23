@@ -27,7 +27,7 @@ from ..common.auth_jwt import require_roles
 router = APIRouter(prefix="/books", tags=["Books"])
 
 UPLOADS_DIR = Path("/app/uploads")
-PUBLIC_PRODUCTS_BASE_URL = os.getenv("PUBLIC_PRODUCTS_BASE_URL", "http://localhost/api/v1/products")
+PUBLIC_PRODUCTS_BASE_URL = os.getenv("PUBLIC_PRODUCTS_BASE_URL", "/api/v1/products").rstrip("/")
 INTERNAL_SERVICE_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "")
 MAX_IMAGE_UPLOAD_MB = int(os.getenv("MAX_IMAGE_UPLOAD_MB", "20"))
 

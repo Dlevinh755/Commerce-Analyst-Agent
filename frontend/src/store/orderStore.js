@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { orderService } from '../services/orderService';
 import { paymentService } from '../services/paymentService';
+import { resolveMediaUrl } from '../utils/mediaUrl';
 
 const ORDER_LOG_PREFIX = '[orderStore]';
 const devLog = (...args) => {
@@ -18,16 +19,17 @@ function normalizeOrder(raw = {}) {
     book_id: item.book_id ?? item.book?.book_id,
     title: item.title ?? item.book?.title ?? `Sách #${item.book_id}`,
     author: item.author ?? item.book?.author ?? null,
-    cover:
+    cover: resolveMediaUrl(
       item.cover ??
-      item.image_url ??
-      item.image ??
-      item.thumbnail ??
-      item.book?.image_url ??
-      item.book?.cover ??
-      item.book?.image ??
-      item.book?.thumbnail ??
-      '',
+        item.image_url ??
+        item.image ??
+        item.thumbnail ??
+        item.book?.image_url ??
+        item.book?.cover ??
+        item.book?.image ??
+        item.book?.thumbnail ??
+        ''
+    ),
     status: item.status ?? null,
     price: Number(item.price ?? item.unit_price ?? 0),
     quantity: Number(item.quantity ?? 0),

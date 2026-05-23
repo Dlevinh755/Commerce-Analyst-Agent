@@ -1,5 +1,6 @@
 import os
 import logging
+from decimal import Decimal, ROUND_HALF_UP
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session, joinedload
@@ -52,6 +53,11 @@ def apply_order_status_from_payment(order: Order, payment_status: PaymentStatus)
     elif payment_status == PaymentStatus.failed:
         if order.status not in [OrderStatus.shipped, OrderStatus.delivered]:
             order.status = OrderStatus.pending
+
+
+def to_vnpay_amount(amount: Decimal) -> int:
+    amount_vnd = Decimal(amount).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    return max(1, int(amount_vnd)) * 100
 
 
 @router.post("", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
@@ -420,7 +426,7 @@ def internal_vnpay_confirm(
         logger.warning("internal_vnpay_confirm.order_cancelled order_id=%s", data.order_id)
         raise HTTPException(status_code=409, detail="Cancelled order cannot be paid")
 
-    expected_amount = max(1, int(round(float(order.total_amount) * 25000))) * 100
+    expected_amount = to_vnpay_amount(order.total_amount)
     if data.amount != expected_amount:
         logger.warning(
             "internal_vnpay_confirm.invalid_amount order_id=%s expected=%s got=%s",

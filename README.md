@@ -14,39 +14,64 @@ Update the values in `.env` for your local machine.
 
 ### 2. Start local development stack
 
-This repo uses Docker Compose files under `compose/` and a root `Makefile` to keep commands short.
+This repo uses Docker Compose files under `compose/` and small wrapper scripts to keep commands short across Windows, Linux, and macOS.
 
-Start the main stack:
+Start the main stack on Windows CMD or PowerShell:
 
-```bash
-make up
+```bat
+dev up
 ```
 
-Start the main stack plus optional tools such as Kafka UI:
+Start the main stack on Linux, macOS, Git Bash, or WSL:
 
 ```bash
-make up-tools
+./dev.sh up
 ```
 
-Common commands:
+Start the main stack plus optional tools such as Kafka UI.
+
+Windows:
+
+```bat
+dev up-tools
+```
+
+Linux/macOS:
 
 ```bash
-make ps
-make logs SERVICE=order_service
-make restart SERVICE=gateway
-make config
-make build
-make down
+./dev.sh up-tools
 ```
 
-If you are on Windows and do not have `make`, use Git Bash, WSL, Chocolatey, Scoop, or install GNU Make.
+Common Windows commands:
+
+```bat
+dev ps
+dev logs order_service
+dev restart gateway
+dev config
+dev build
+dev down
+```
+
+Common Linux/macOS commands:
+
+```bash
+./dev.sh ps
+./dev.sh logs order_service
+./dev.sh restart gateway
+./dev.sh config
+./dev.sh build
+./dev.sh down
+```
 
 ### 3. Compose layout
 
 - `compose/infra.yml`: Postgres, Kafka, Cloudflared, shared volumes, shared networks.
 - `compose/app.yml`: Gateway, backend services, analytics service, frontend.
 - `compose/tools.yml`: Optional tools such as Kafka UI.
-- `Makefile`: Short commands for local development.
+- `dev.cmd`: Short commands for Windows CMD and PowerShell.
+- `dev.sh`: Short commands for Linux, macOS, Git Bash, and WSL.
+- `dev.ps1`: PowerShell helper kept for compatibility.
 - `docker-compose.dev.yml`: Legacy single-file dev compose kept for compatibility.
 - `docker-compose.prod.yml`: Reserved for production compose configuration.
 
@@ -60,18 +85,26 @@ If you are on Windows and do not have `make`, use Git Bash, WSL, Chocolatey, Sco
 - Order service: `http://localhost:8003/health`
 - Review service: `http://localhost:8006/health`
 - Payout service: `http://localhost:8008/health`
-- Kafka UI: `http://localhost:8080` after `make up-tools`
+- Kafka UI: `http://localhost:8080` after `dev up-tools` on Windows or `./dev.sh up-tools` on Linux/macOS.
 
 ### 5. Stop containers
 
 Stop the stack:
 
+Windows:
+
+```bat
+dev down
+```
+
+Linux/macOS:
+
 ```bash
-make down
+./dev.sh down
 ```
 
 Remove volumes too if you want to wipe local data:
 
-```bash
+```powershell
 docker compose --env-file .env -f compose/infra.yml -f compose/app.yml -f compose/tools.yml down -v
 ```

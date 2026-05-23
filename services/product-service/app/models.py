@@ -36,7 +36,7 @@ class Book(Base):
     description = Column(Text, nullable=True)
     price = Column(Numeric(10, 2), nullable=False)
     stock_quantity = Column(Integer, nullable=False, default=0)
-    image_url = Column(String(255), nullable=True)
+    image_url = Column(Text, nullable=True)
     purchase_count = Column(Integer, nullable=False, default=0, server_default="0")
     rating_avg = Column(Numeric(3, 2), nullable=False, default=0, server_default="0")
     rating_count = Column(Integer, nullable=False, default=0, server_default="0")

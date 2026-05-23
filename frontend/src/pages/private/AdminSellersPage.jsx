@@ -3,6 +3,7 @@ import { authService } from '../../services/authService';
 import Toast from '../../components/common/Toast';
 import AdminSectionNav from '../../components/admin/AdminSectionNav';
 import { getErrorMessage } from '../../utils/errorMessage';
+import { formatCurrencyVND } from '../../utils/currency';
 
 export default function AdminSellersPage() {
   const [sellers, setSellers] = useState([]);
@@ -18,7 +19,7 @@ export default function AdminSellersPage() {
       const { data } = await authService.listUsers({ role: 'seller', page: 1, page_size: 100 });
       setSellers(Array.isArray(data?.items) ? data.items : []);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not load sellers.'));
+      setError(getErrorMessage(err, 'Không thể tải danh sách người bán.'));
     } finally {
       setLoading(false);
     }
@@ -35,7 +36,7 @@ export default function AdminSellersPage() {
       setSellers((prev) => prev.map((item) => (item.user_id === userId ? data : item)));
       setToast(successMessage);
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not update seller.'));
+      setToast(getErrorMessage(err, 'Không thể cập nhật người bán.'));
     } finally {
       setSavingUserId(null);
     }
@@ -50,9 +51,9 @@ export default function AdminSellersPage() {
           item.user_id === userId ? { ...item, is_hidden: true, is_active: false } : item
         )
       );
-      setToast('Seller hidden successfully.');
+      setToast('Đã ẩn người bán thành công.');
     } catch (err) {
-      setToast(getErrorMessage(err, 'Could not hide seller.'));
+      setToast(getErrorMessage(err, 'Không thể ẩn người bán.'));
     } finally {
       setSavingUserId(null);
     }
@@ -61,8 +62,8 @@ export default function AdminSellersPage() {
   return (
     <section className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">Admin Sellers</h1>
-        <p className="mt-1 text-slate-600">Review seller accounts, account numbers and current balances.</p>
+        <h1 className="text-2xl font-semibold">Quản lý người bán</h1>
+        <p className="mt-1 text-slate-600">Xem tài khoản người bán, số tài khoản và số dư hiện tại.</p>
       </div>
 
       <AdminSectionNav />
@@ -70,24 +71,24 @@ export default function AdminSellersPage() {
       {error ? <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       {loading ? (
-        <div className="card">Loading sellers...</div>
+        <div className="card">Đang tải danh sách người bán...</div>
       ) : (
         <article className="card overflow-x-auto">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Sellers</h2>
+            <h2 className="text-lg font-semibold">Người bán</h2>
             <button type="button" className="rounded-lg border px-3 py-1.5 text-sm" onClick={loadSellers}>
-              Refresh
+              Làm mới
             </button>
           </div>
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="px-3 py-2 text-left font-medium">ID</th>
-                <th className="px-3 py-2 text-left font-medium">User</th>
-                <th className="px-3 py-2 text-left font-medium">Account Number</th>
-                <th className="px-3 py-2 text-left font-medium">Balance</th>
-                <th className="px-3 py-2 text-left font-medium">Flags</th>
-                <th className="px-3 py-2 text-right font-medium">Actions</th>
+                <th className="px-3 py-2 text-left font-medium">Tài khoản</th>
+                <th className="px-3 py-2 text-left font-medium">Số tài khoản</th>
+                <th className="px-3 py-2 text-left font-medium">Số dư</th>
+                <th className="px-3 py-2 text-left font-medium">Trạng thái</th>
+                <th className="px-3 py-2 text-right font-medium">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -99,10 +100,10 @@ export default function AdminSellersPage() {
                     <p className="text-xs text-slate-500">{seller.email}</p>
                   </td>
                   <td className="px-3 py-2">{seller.account_number || '-'}</td>
-                  <td className="px-3 py-2 font-medium">${Number(seller.balance || 0).toFixed(2)}</td>
+                  <td className="px-3 py-2 font-medium">{formatCurrencyVND(seller.balance)}</td>
                   <td className="px-3 py-2 text-xs text-slate-600">
-                    <p>Active: {seller.is_active ? 'Yes' : 'No'}</p>
-                    <p>Hidden: {seller.is_hidden ? 'Yes' : 'No'}</p>
+                    <p>Kích hoạt: {seller.is_active ? 'Có' : 'Không'}</p>
+                    <p>Ẩn: {seller.is_hidden ? 'Có' : 'Không'}</p>
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-2">
@@ -113,12 +114,12 @@ export default function AdminSellersPage() {
                           onPatchSeller(
                             seller.user_id,
                             { is_active: !seller.is_active },
-                            seller.is_active ? 'Seller deactivated.' : 'Seller activated.'
+                            seller.is_active ? 'Đã tắt người bán.' : 'Đã kích hoạt người bán.'
                           )
                         }
                         disabled={savingUserId === seller.user_id}
                       >
-                        {seller.is_active ? 'Deactivate' : 'Activate'}
+                        {seller.is_active ? 'Tắt' : 'Kích hoạt'}
                       </button>
                       <button
                         type="button"
@@ -126,7 +127,7 @@ export default function AdminSellersPage() {
                         onClick={() => onHideSeller(seller.user_id)}
                         disabled={savingUserId === seller.user_id || seller.is_hidden}
                       >
-                        {seller.is_hidden ? 'Hidden' : 'Hide'}
+                        {seller.is_hidden ? 'Đã ẩn' : 'Ẩn'}
                       </button>
                     </div>
                   </td>

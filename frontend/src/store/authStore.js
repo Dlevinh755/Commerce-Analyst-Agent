@@ -2,7 +2,13 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authService } from '../services/authService';
 import useCartStore from './cartStore';
-import { clearAccessToken, setAccessToken } from '../utils/token';
+import {
+  clearAccessToken,
+  getRefreshToken,
+  setAccessToken,
+  setAuthTokens,
+  setRefreshToken,
+} from '../utils/token';
 
 function shouldLoadCart(user) {
   return String(user?.role || '').toLowerCase() === 'buyer';
@@ -13,6 +19,7 @@ const useAuthStore = create(
     (set, get) => ({
       user: null,
       accessToken: null,
+      refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
       isHydrated: false,
@@ -23,11 +30,15 @@ const useAuthStore = create(
         set({ isLoading: true });
         try {
           const { data } = await authService.login(payload);
-          setAccessToken(data.access_token);
+          const accessToken = data.access_token || data.accessToken;
+          const refreshToken = data.refresh_token || data.refreshToken;
+          setAuthTokens(accessToken, refreshToken);
           set({
             user: data.user,
-            accessToken: data.access_token,
+            accessToken,
+            refreshToken,
             isAuthenticated: true,
+            isHydrated: true,
           });
           if (shouldLoadCart(data.user)) {
             await useCartStore.getState().fetchCart();
@@ -56,10 +67,18 @@ const useAuthStore = create(
         return data;
       },
 
-      logout: () => {
+      logout: async () => {
+        const refreshToken = get().refreshToken || getRefreshToken();
+        if (refreshToken) {
+          try {
+            await authService.logout({ refresh_token: refreshToken });
+          } catch {
+            // Ignore logout API errors and clear local session anyway.
+          }
+        }
         clearAccessToken();
         useCartStore.setState({ items: [], isLoading: false, error: '' });
-        set({ user: null, accessToken: null, isAuthenticated: false });
+        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
       },
     }),
     {
@@ -67,23 +86,25 @@ const useAuthStore = create(
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: (storeState) => (state) => {
         const token = state?.accessToken;
-        console.log('[authStore] Rehydrating from localStorage', { 
-          hasToken: !!token, 
-          isAuthenticated: state?.isAuthenticated,
-          userRole: state?.user?.role 
-        });
+        const refreshToken = state?.refreshToken;
         if (token) {
           setAccessToken(token);
         } else {
-          clearAccessToken();
+          setAccessToken(null);
         }
-        // Mark hydration as complete
-        console.log('[authStore] Setting isHydrated to true');
-        useAuthStore.setState({ isHydrated: true });
+        if (refreshToken) {
+          setRefreshToken(refreshToken);
+        } else {
+          setRefreshToken(null);
+        }
+
+        // Mark hydration complete even when there is no persisted auth payload.
+        storeState?.setHydrated?.();
       },
     }
   )

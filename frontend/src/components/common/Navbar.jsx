@@ -1,11 +1,32 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useCart from '../../hooks/useCart';
 import { getDefaultRouteByRole, normalizeRole } from '../../utils/role';
 
-const baseLinkClass = 'rounded-md px-3 py-2 text-sm font-medium';
+const baseLinkClass =
+  'group inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900';
+
+function NavItem({ to, children, badge, icon, className }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `${baseLinkClass} ${
+          isActive ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-100' : ''
+        } ${className || ''}`
+      }
+    >
+      <span className="text-slate-500 transition group-hover:text-slate-700">{icon}</span>
+      <span>{children}</span>
+      {badge ? (
+        <span className="rounded-full bg-brand-100 px-1.5 py-0.5 text-xs font-semibold text-brand-700">{badge}</span>
+      ) : null}
+    </NavLink>
+  );
+}
 
 export default function Navbar() {
+  const navigate = useNavigate();
   const isAuthenticated = useAuth((state) => state.isAuthenticated);
   const logout = useAuth((state) => state.logout);
   const user = useAuth((state) => state.user);
@@ -13,132 +34,195 @@ export default function Navbar() {
   const role = normalizeRole(user?.role);
   const dashboardPath = getDefaultRouteByRole(role);
 
+  const onLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate('/login', { replace: true });
+    }
+  };
+
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="border-b border-slate-200/80 bg-white/95 backdrop-blur">
       <div className="container-page flex min-h-16 flex-col gap-2 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:py-0">
-        <Link to="/" className="text-xl font-bold text-brand-700">
-          Bookstore
+        <Link to="/" className="text-3xl font-bold leading-none text-slate-800 sm:text-4xl">
+          Book Store
         </Link>
 
-        <nav className="flex w-full flex-wrap items-center gap-1 sm:w-auto sm:justify-end">
-          <NavLink
+        <nav className="flex w-full flex-wrap items-center justify-start gap-1.5 rounded-full border border-slate-200 bg-white p-1.5 shadow-sm sm:w-auto sm:justify-end">
+          <NavItem
             to="/books"
-            className={({ isActive }) =>
-              `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+            icon={
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 5a2 2 0 0 1 2-2h12v17H6a2 2 0 0 0-2 2V5z" />
+                <path d="M18 17H6a2 2 0 0 0-2 2" />
+              </svg>
             }
           >
-            Books
-          </NavLink>
+            Sách
+          </NavItem>
 
           {isAuthenticated ? (
             <>
-
               {role === 'buyer' ? (
                 <>
-                  <NavLink
+                  <NavItem
                     to="/cart"
-                    className={({ isActive }) =>
-                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    badge={totalItems > 0 ? totalItems : undefined}
+                    icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="9" cy="20" r="1" />
+                        <circle cx="18" cy="20" r="1" />
+                        <path d="M3 4h2l2.2 10.2a1 1 0 0 0 1 .8h9.8a1 1 0 0 0 1-.8L21 7H7" />
+                      </svg>
                     }
                   >
-                    Cart ({totalItems})
-                  </NavLink>
-                  <NavLink
+                    Giỏ hàng
+                  </NavItem>
+                  <NavItem
                     to="/orders"
-                    className={({ isActive }) =>
-                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="4" y="4" width="16" height="16" rx="2" />
+                        <path d="M8 9h8M8 13h8M8 17h5" />
+                      </svg>
                     }
                   >
-                    Orders
-                  </NavLink>
-                  <NavLink
+                    Đơn hàng
+                  </NavItem>
+                  <NavItem
                     to="/payments"
-                    className={({ isActive }) =>
-                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="6" width="20" height="12" rx="2" />
+                        <path d="M2 10h20" />
+                      </svg>
                     }
                   >
-                    Payments
-                  </NavLink>
+                    Thanh toán
+                  </NavItem>
                 </>
               ) : null}
 
               {role === 'seller' ? (
                 <>
-                  <NavLink
+                  <NavItem
                     to="/seller/orders"
-                    className={({ isActive }) =>
-                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="4" y="4" width="16" height="16" rx="2" />
+                        <path d="M8 9h8M8 13h8M8 17h5" />
+                      </svg>
                     }
                   >
-                    Orders
-                  </NavLink>
-                  <NavLink
+                    Đơn hàng
+                  </NavItem>
+                  <NavItem
                     to="/seller/products"
-                    className={({ isActive }) =>
-                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 7L12 3 4 7l8 4 8-4z" />
+                        <path d="M4 7v10l8 4 8-4V7" />
+                      </svg>
                     }
                   >
-                    My Products
-                  </NavLink>
+                    Sản phẩm của tôi
+                  </NavItem>
                 </>
               ) : null}
 
               {role === 'admin' ? (
                 <>
-                  <NavLink
+                  <NavItem
                     to="/admin/buyers"
-                    className={({ isActive }) =>
-                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="8.5" cy="7" r="4" />
+                      </svg>
                     }
                   >
-                    Buyers
-                  </NavLink>
-                  <NavLink
+                    Người mua
+                  </NavItem>
+                  <NavItem
                     to="/admin/sellers"
-                    className={({ isActive }) =>
-                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                      </svg>
                     }
                   >
-                    Sellers
-                  </NavLink>
-                  <NavLink
+                    Người bán
+                  </NavItem>
+                  <NavItem
                     to="/admin/products"
-                    className={({ isActive }) =>
-                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 7L12 3 4 7l8 4 8-4z" />
+                        <path d="M4 7v10l8 4 8-4V7" />
+                      </svg>
                     }
                   >
-                    Products
-                  </NavLink>
-                  <NavLink
+                    Sản phẩm
+                  </NavItem>
+                  <NavItem
                     to="/admin/orders"
-                    className={({ isActive }) =>
-                      `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                    icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="4" y="4" width="16" height="16" rx="2" />
+                        <path d="M8 9h8M8 13h8M8 17h5" />
+                      </svg>
                     }
                   >
-                    Orders
-                  </NavLink>
+                    Đơn hàng
+                  </NavItem>
                 </>
               ) : null}
 
-              <NavLink
+              <NavItem
                 to="/profile"
-                className={({ isActive }) =>
-                  `${baseLinkClass} ${isActive ? 'bg-slate-100 text-brand-700' : 'text-slate-700'}`
+                className="hidden sm:inline-flex"
+                icon={
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
                 }
               >
-                Profile
-              </NavLink>
-              <button type="button" onClick={logout} className="btn-primary">
-                Logout
+                Hồ sơ
+              </NavItem>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <path d="M16 17l5-5-5-5" />
+                  <path d="M21 12H9" />
+                </svg>
+                Đăng xuất
               </button>
             </>
           ) : (
             <>
-              <NavLink to="/login" className={baseLinkClass}>
-                Login
-              </NavLink>
-              <NavLink to="/register" className="btn-primary">
-                Register
+              <NavItem
+                to="/login"
+                icon={
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 17l5-5-5-5" />
+                    <path d="M15 12H3" />
+                    <path d="M21 19V5a2 2 0 0 0-2-2h-5" />
+                  </svg>
+                }
+              >
+                Đăng nhập
+              </NavItem>
+              <NavLink to="/register" className="btn-primary inline-flex items-center rounded-full px-4 py-2 text-sm">
+                Đăng ký
               </NavLink>
             </>
           )}

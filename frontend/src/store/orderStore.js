@@ -16,7 +16,18 @@ function normalizeOrder(raw = {}) {
     id: item.id ?? item.order_item_id ?? item.book_id,
     order_item_id: item.order_item_id ?? item.id,
     book_id: item.book_id ?? item.book?.book_id,
-    title: item.title ?? item.book?.title ?? `Book #${item.book_id}`,
+    title: item.title ?? item.book?.title ?? `Sách #${item.book_id}`,
+    author: item.author ?? item.book?.author ?? null,
+    cover:
+      item.cover ??
+      item.image_url ??
+      item.image ??
+      item.thumbnail ??
+      item.book?.image_url ??
+      item.book?.cover ??
+      item.book?.image ??
+      item.book?.thumbnail ??
+      '',
     status: item.status ?? null,
     price: Number(item.price ?? item.unit_price ?? 0),
     quantity: Number(item.quantity ?? 0),
@@ -198,7 +209,7 @@ const useOrderStore = create(
           console.error(ORDER_LOG_PREFIX, 'createOrderFromCart:error', error?.response?.status, error?.response?.data || error?.message);
           set({
             isLoading: false,
-            error: error?.response?.data?.detail || 'Could not create order.',
+            error: error?.response?.data?.detail || 'Không thể tạo đơn hàng.',
           });
           throw error;
         }

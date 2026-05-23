@@ -13,7 +13,7 @@ export default function SellerProductCreatePage() {
       await sellerProductService.create(payload);
       navigate('/seller/products', {
         replace: true,
-        state: { message: 'Product created successfully.' },
+        state: { message: 'Tạo sản phẩm thành công.' },
       });
     } finally {
       setSubmitting(false);
@@ -24,16 +24,16 @@ export default function SellerProductCreatePage() {
     <section className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Create Product</h1>
-          <p className="mt-1 text-slate-600">Publish a new book to your seller catalog.</p>
+          <h1 className="text-2xl font-semibold">Tạo sản phẩm</h1>
+          <p className="mt-1 text-slate-600">Đăng một cuốn sách mới lên danh mục của bạn.</p>
         </div>
         <Link to="/seller/products" className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          Back to products
+          Quay lại danh sách sản phẩm
         </Link>
       </div>
 
       <div className="card">
-        <SellerProductForm submitText="Create Product" onSubmit={handleCreate} submitting={submitting} />
+        <SellerProductForm submitText="Tạo sản phẩm" onSubmit={handleCreate} submitting={submitting} />
       </div>
     </section>
   );

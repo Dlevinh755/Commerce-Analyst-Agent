@@ -1,6 +1,7 @@
 server {
     listen ${GATEWAY_PORT};
     server_name ${DOMAIN_NAME};
+    client_max_body_size 25M;
 
     set $cors_origin "";
     if ($http_origin ~* ^http://(localhost|127\.0\.0\.1):(5173|5174|5175)$) {

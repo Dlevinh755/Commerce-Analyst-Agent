@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom';
 
 const links = [
-  { to: '/admin/dashboard', label: 'Dashboard' },
-  { to: '/admin/buyers', label: 'Buyers' },
-  { to: '/admin/sellers', label: 'Sellers' },
-  { to: '/admin/products', label: 'Products' },
-  { to: '/admin/orders', label: 'Orders' },
+  { to: '/admin/dashboard', label: 'Bảng điều khiển' },
+  { to: '/admin/buyers', label: 'Người mua' },
+  { to: '/admin/sellers', label: 'Người bán' },
+  { to: '/admin/products', label: 'Sản phẩm' },
+  { to: '/admin/orders', label: 'Đơn hàng' },
 ];
 
 export default function AdminSectionNav() {

@@ -30,6 +30,9 @@ with engine.begin() as connection:
     connection.execute(
         text("ALTER TABLE books ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE")
     )
+    connection.execute(
+        text("ALTER TABLE books ALTER COLUMN image_url TYPE TEXT")
+    )
 
     if MIGRATION_SQL_PATH.exists():
         sql_text = MIGRATION_SQL_PATH.read_text(encoding="utf-8")

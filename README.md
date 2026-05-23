@@ -1,60 +1,77 @@
-## 🚀 Quick Start
+# Commerce Analyst Agent
 
-### 1. Cài đặt môi trường
+## Quick Start
 
-Sao chép cấu hình mẫu và điền các thông tin cần thiết:
+### 1. Prepare environment
 
-**Bash**
+Copy the sample environment file if you do not already have a local `.env`:
 
-```
+```bash
 cp .env.example .env
 ```
 
-### 2. Khởi chạy với Docker
+Update the values in `.env` for your local machine.
 
-#### **Môi trường Phát triển (Development)**
+### 2. Start local development stack
 
-Dùng để code và debug trực tiếp (có mở port DB 5432, 27017 và pgAdmin):
+This repo uses Docker Compose files under `compose/` and a root `Makefile` to keep commands short.
 
-**Bash**
+Start the main stack:
 
-```
-docker-compose -f docker-compose.dev.yml up -d
-```
-
-* **Postgres:** `localhost:5432`
-* **MongoDB:** `localhost:27017`
-* **pgAdmin:** `http://localhost:8080`
-
-#### **Môi trường Triển khai (Production)**
-
-Chỉ kéo Image đã đóng gói từ Registry (không build code tại chỗ):
-
-**Bash**
-
-```
-# Đăng nhập và kéo image mới nhất
-docker compose -f docker-compose.prod.yml pull
-
-# Chạy hệ thống
-docker compose -f docker-compose.prod.yml up -d
+```bash
+make up
 ```
 
-### 3. Cấu trúc dự án
+Start the main stack plus optional tools such as Kafka UI:
 
-* `docker-compose.yml`: Cấu hình nền tảng chung.
-* `docker-compose.dev.yml`: Cấu hình mở rộng cho Local Dev.
-* `docker-compose.prod.yml`: Cấu hình tối ưu cho Production (Image-based).
-* `.gitkeep`: Đảm bảo cấu trúc thư mục rỗng được giữ vững trên GitHub.
-
-### 4. Dọn dẹp
-
-Để dừng và xóa toàn bộ container:
-
-**Bash**
-
-```
-docker compose down
+```bash
+make up-tools
 ```
 
-*(Thêm flag `-v` nếu bạn muốn xóa sạch dữ liệu trong Volumes).*
+Common commands:
+
+```bash
+make ps
+make logs SERVICE=order_service
+make restart SERVICE=gateway
+make config
+make build
+make down
+```
+
+If you are on Windows and do not have `make`, use Git Bash, WSL, Chocolatey, Scoop, or install GNU Make.
+
+### 3. Compose layout
+
+- `compose/infra.yml`: Postgres, Kafka, Cloudflared, shared volumes, shared networks.
+- `compose/app.yml`: Gateway, backend services, analytics service, frontend.
+- `compose/tools.yml`: Optional tools such as Kafka UI.
+- `Makefile`: Short commands for local development.
+- `docker-compose.dev.yml`: Legacy single-file dev compose kept for compatibility.
+- `docker-compose.prod.yml`: Reserved for production compose configuration.
+
+### 4. Local endpoints
+
+- Gateway: `http://localhost/health`
+- Frontend: `http://localhost:5175`
+- Postgres: `localhost:5432`
+- Auth service: `http://localhost:8000/health`
+- Product service: `http://localhost:8001/books?page=1&page_size=1`
+- Order service: `http://localhost:8003/health`
+- Review service: `http://localhost:8006/health`
+- Payout service: `http://localhost:8008/health`
+- Kafka UI: `http://localhost:8080` after `make up-tools`
+
+### 5. Stop containers
+
+Stop the stack:
+
+```bash
+make down
+```
+
+Remove volumes too if you want to wipe local data:
+
+```bash
+docker compose --env-file .env -f compose/infra.yml -f compose/app.yml -f compose/tools.yml down -v
+```

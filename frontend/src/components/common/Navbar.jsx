@@ -64,19 +64,21 @@ export default function Navbar() {
 
           {isAuthenticated ? (
             <>
-              <NavItem
-                to={dashboardPath}
-                icon={
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M3 13h8V3H3v10z" />
-                    <path d="M13 21h8V11h-8v10z" />
-                    <path d="M13 3h8v6h-8V3z" />
-                    <path d="M3 17h8v4H3v-4z" />
-                  </svg>
-                }
-              >
-                AI Assistant
-              </NavItem>
+              {role === 'admin' ? (
+                <NavItem
+                  to={dashboardPath}
+                  icon={
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 13h8V3H3v10z" />
+                      <path d="M13 21h8V11h-8v10z" />
+                      <path d="M13 3h8v6h-8V3z" />
+                      <path d="M3 17h8v4H3v-4z" />
+                    </svg>
+                  }
+                >
+                  AI Assistant
+                </NavItem>
+              ) : null}
 
               {role === 'buyer' ? (
                 <>
@@ -115,6 +117,18 @@ export default function Navbar() {
                   >
                     Thanh toán
                   </NavItem>
+                  <NavItem
+                    to="/payouts"
+                    icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 3v12" />
+                        <path d="M7 10l5 5 5-5" />
+                        <path d="M5 21h14" />
+                      </svg>
+                    }
+                  >
+                    Rút tiền
+                  </NavItem>
                 </>
               ) : null}
 
@@ -141,6 +155,18 @@ export default function Navbar() {
                     }
                   >
                     Sản phẩm của tôi
+                  </NavItem>
+                  <NavItem
+                    to="/payouts"
+                    icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 3v12" />
+                        <path d="M7 10l5 5 5-5" />
+                        <path d="M5 21h14" />
+                      </svg>
+                    }
+                  >
+                    Rút tiền
                   </NavItem>
                 </>
               ) : null}
@@ -192,6 +218,18 @@ export default function Navbar() {
                     }
                   >
                     Đơn hàng
+                  </NavItem>
+                  <NavItem
+                    to="/admin/payouts"
+                    icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 3v12" />
+                        <path d="M7 10l5 5 5-5" />
+                        <path d="M5 21h14" />
+                      </svg>
+                    }
+                  >
+                    Rút tiền
                   </NavItem>
                 </>
               ) : null}

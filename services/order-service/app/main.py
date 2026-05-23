@@ -199,7 +199,7 @@ with engine.begin() as connection:
     connection.execute(
         text(
             """
-            INSERT INTO seller_orders (order_id, seller_id, status)
+            INSERT INTO seller_orders (order_id, seller_id, status, cancellation_status)
             SELECT
                 oi.order_id,
                 COALESCE(oi.seller_id, b.seller_id) AS seller_id,
@@ -209,7 +209,8 @@ with engine.begin() as connection:
                     WHEN o.status = 'cancelled' THEN 'cancelled'::seller_order_status
                     WHEN o.status = 'processing' THEN 'processing'::seller_order_status
                     ELSE 'pending'::seller_order_status
-                END AS status
+                END AS status,
+                'none' AS cancellation_status
             FROM order_items oi
             JOIN books b ON b.book_id = oi.book_id
             JOIN orders o ON o.order_id = oi.order_id

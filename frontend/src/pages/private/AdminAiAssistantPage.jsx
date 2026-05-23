@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import AdminSectionNav from '../../components/admin/AdminSectionNav';
 import AnalyticsChatPanel from '../../components/admin/AnalyticsChatPanel';
 
-export default function AdminDashboardPage() {
+export default function AdminAiAssistantPage() {
   return (
     <section className="space-y-5">
       <div>

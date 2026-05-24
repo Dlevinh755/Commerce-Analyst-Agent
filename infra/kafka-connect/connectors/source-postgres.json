@@ -1,0 +1,36 @@
+{
+  "name": "source-local-postgres",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+
+    "database.hostname": "postgres-db",
+    "database.port": "5432",
+    "database.user": "${env:POSTGRES_USER}",
+    "database.password": "${env:POSTGRES_PASSWORD}",
+    "database.dbname": "${env:POSTGRES_DB}",
+
+    "topic.prefix": "commerce",
+    "plugin.name": "pgoutput",
+    "slot.name": "debezium_slot",
+    "publication.name": "dbz_publication",
+    "publication.autocreate.mode": "filtered",
+
+    "table.include.list": "public.users,public.books,public.categories,public.orders,public.order_items,public.seller_orders,public.payments,public.cart,public.payout_requests,public.reviews",
+    "column.exclude.list": "public.users.password_hash,public.refresh_tokens.token,public.refresh_tokens.is_revoked,public.refresh_tokens.expires_at",
+
+    "decimal.handling.mode": "double",
+    "time.precision.mode": "connect",
+
+    "column.propagate.source.type": "public.books.description,public.orders.shipping_address",
+
+    "snapshot.mode": "initial",
+
+    "heartbeat.interval.ms": "10000",
+
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "true",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "true"
+  }
+}

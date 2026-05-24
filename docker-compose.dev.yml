@@ -2,6 +2,7 @@ services:
   postgres-db:
     image: postgres:15-alpine
     container_name: commerce-postgres
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -219,8 +220,12 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - ORDER_SERVICE_URL=http://order_service:8003
       - PRODUCT_SERVICE_URL=http://product-service:8001
+      - DEV_AUTO_SEED=true
+      - DEV_SEED_FILE=/app/dev-seeds.json
     ports:
       - "${REVIEW_SERVICE_PORT:-8006}:8006"
+    volumes:
+      - ./dev-seeds.json:/app/dev-seeds.json:ro
     depends_on:
       - postgres-db
       - order_service

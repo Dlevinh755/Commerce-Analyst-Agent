@@ -4,6 +4,7 @@ services:
   postgres-db:
     image: postgres:15-alpine
     container_name: commerce-postgres
+    command: ["postgres", "-c", "wal_level=logical"]
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -29,7 +30,7 @@ services:
       - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
       - CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk
       - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://${KAFKA_PUBLIC_HOST:-localhost}:${KAFKA_PUBLIC_PORT:-9092},PLAINTEXT_INTERNAL://kafka:29092
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT_INTERNAL
@@ -38,6 +39,62 @@ services:
       - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
     volumes:
       - kafka_data:/var/lib/kafka/data
+
+  kafka-connect:
+    build: ../infra/kafka-connect
+    container_name: commerce-kafka-connect
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: "kafka:29092"
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: _connect_configs
+      OFFSET_STORAGE_TOPIC: _connect_offsets
+      STATUS_STORAGE_TOPIC: _connect_statuses
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "true"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "true"
+      CONNECT_CONFIG_PROVIDERS: "env"
+      CONNECT_CONFIG_PROVIDERS_ENV_CLASS: "org.apache.kafka.common.config.provider.EnvVarConfigProvider"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      S3_REGION: ${S3_REGION}
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:8083/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    depends_on:
+      - kafka
+      - postgres-db
+
+  connect-setup:
+    image: curlimages/curl:latest
+    container_name: commerce-connect-setup
+    depends_on:
+      kafka-connect:
+        condition: service_healthy
+    volumes:
+      - ../infra/kafka-connect/connectors:/config:ro
+    command: |
+      sh -c "
+        echo '=> Waiting 30s for backend services to seed data...';
+        sleep 30;
+        echo '=> Kafka Connect is healthy. Registering connectors...';
+        curl -s -X POST -H 'Content-Type: application/json' -d @/config/source-postgres.json http://kafka-connect:8083/connectors;
+        echo '';
+        echo '=> [OK] Source connector registered.';
+        curl -s -X POST -H 'Content-Type: application/json' -d @/config/sink-s3.json http://kafka-connect:8083/connectors;
+        echo '';
+        echo '=> [OK] S3 Sink connector registered.';
+        echo '=> All connectors configured successfully. Exiting.';
+      "
 
   cloudflared:
     image: cloudflare/cloudflared:latest

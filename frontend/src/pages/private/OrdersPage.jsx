@@ -330,136 +330,141 @@ export default function OrdersPage() {
         ) : filteredOrders.length === 0 ? (
           <div className="card mt-3 text-slate-600">Không tìm thấy đơn hàng nào cho sách của bạn.</div>
         ) : (
-          <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-slate-600">
-                <tr>
-                  <th className="w-10 px-3 py-3 text-left font-medium">
-                    <input type="checkbox" className="h-4 w-4 rounded border-slate-300" />
-                  </th>
-                  <th className="px-3 py-3 text-left font-medium">Mã đơn</th>
-                  <th className="px-3 py-3 text-left font-medium">Người mua</th>
-                  <th className="px-3 py-3 text-left font-medium">Ngày đặt</th>
-                  <th className="px-3 py-3 text-left font-medium">Sản phẩm cần gửi</th>
-                  <th className="px-3 py-3 text-left font-medium">Tổng tiền</th>
-                  <th className="px-3 py-3 text-left font-medium">Trạng thái đơn</th>
-                  <th className="px-3 py-3 text-left font-medium">Trạng thái mặt hàng</th>
-                  <th className="px-3 py-3 text-right font-medium">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredOrders.map((order) => {
-                  const status = normalizeStatus(order.status);
-                  const cancellationStatus = normalizeStatus(order.cancellation_status || 'none');
-                  const mySellerStatus = normalizeStatus(order.mySellerOrder?.status || order.status);
-                  const mySellerCancellationStatus = normalizeStatus(order.mySellerOrder?.cancellation_status || 'none');
-                  const canMarkShipped = !isTerminalOrderStatus(status) && (
-                    mySellerStatus
-                      ? ['pending', 'processing', 'ready_to_ship'].includes(mySellerStatus)
-                      : status === 'pending' || status === 'processing'
-                  ) && cancellationStatus !== 'pending';
-                  const hasPendingCancellation =
-                    ['shipped', 'partially_shipped'].includes(status) &&
-                    cancellationStatus === 'pending' &&
-                    mySellerCancellationStatus === 'pending';
-                  const sellerItems = getSellerItems(order, currentSellerId);
-                  const pendingItemCount = sellerItems.filter((item) => {
-                    const itemStatus = normalizeStatus(item?.status);
-                    return !itemStatus || ['pending', 'processing', 'ready_to_ship'].includes(itemStatus);
-                  }).length;
-                  const showPendingCount = pendingItemCount > 0 && canMarkShipped;
-                  return (
-                    <tr key={order.order_id}>
-                      <td className="px-3 py-3">
-                        <input type="checkbox" className="h-4 w-4 rounded border-slate-300" />
-                      </td>
-                      <td className="px-3 py-3 font-medium">#{order.order_id}</td>
-                      <td className="px-3 py-3">{order.buyerLabel}</td>
-                      <td className="px-3 py-3 text-slate-600">{formatDate(order.order_date)}</td>
-                      <td className="px-3 py-3">
-                        {sellerItems.length ? (
-                          <div className="min-w-[260px] space-y-2">
-                            {sellerItems.map((item) => {
-                              const imageUrl = getItemImageUrl(item);
-                              const itemStatus = normalizeStatus(item?.status || mySellerStatus || order.status);
-                              return (
-                                <div key={item.order_item_id || item.id || `${order.order_id}-${item.book_id}`} className="flex gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
-                                  <div className="h-12 w-9 flex-shrink-0 overflow-hidden rounded border border-slate-200 bg-white">
-                                    {imageUrl ? (
-                                      <img
-                                        src={imageUrl}
-                                        alt={getItemTitle(item)}
-                                        className="h-full w-full object-cover"
-                                        loading="lazy"
-                                      />
-                                    ) : null}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate font-medium text-slate-900">{getItemTitle(item)}</p>
-                                    <p className="text-xs text-slate-500">
-                                      SL: {Number(item?.quantity || 0)} • {formatCurrency(getItemLineTotal(item))}
-                                    </p>
-                                    <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${getStatusBadgeClass(itemStatus)}`}>
-                                      {formatOrderStatus(itemStatus || 'pending')}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400">Không có sản phẩm của seller này</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3">{formatCurrency(order.total_amount)}</td>
-                      <td className="px-3 py-3">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
-                          {formatOrderStatus(order.status || 'pending')}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(mySellerStatus)}`}>
-                          {formatOrderStatus(mySellerStatus || 'khong_xac_dinh')}{showPendingCount ? ` (${pendingItemCount})` : ''}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-right">
-                        {hasPendingCancellation ? (
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-medium text-emerald-700"
-                              onClick={() => onApproveCancellation(order.order_id)}
-                              disabled={reviewingOrderId === order.order_id}
-                            >
-                              {reviewingOrderId === order.order_id ? 'Đang cập nhật...' : 'Duyệt hủy'}
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
-                              onClick={() => onRejectCancellation(order.order_id)}
-                              disabled={reviewingOrderId === order.order_id}
-                            >
-                              {reviewingOrderId === order.order_id ? 'Đang cập nhật...' : 'Từ chối'}
-                            </button>
-                          </div>
-                        ) : canMarkShipped ? (
+          <div className="mt-3 space-y-3">
+            {filteredOrders.map((order) => {
+              const status = normalizeStatus(order.status);
+              const cancellationStatus = normalizeStatus(order.cancellation_status || 'none');
+              const mySellerStatus = normalizeStatus(order.mySellerOrder?.status || order.status);
+              const mySellerCancellationStatus = normalizeStatus(order.mySellerOrder?.cancellation_status || 'none');
+              const canMarkShipped = !isTerminalOrderStatus(status) && (
+                mySellerStatus
+                  ? ['pending', 'processing', 'ready_to_ship'].includes(mySellerStatus)
+                  : status === 'pending' || status === 'processing'
+              ) && cancellationStatus !== 'pending';
+              const hasPendingCancellation =
+                ['shipped', 'partially_shipped'].includes(status) &&
+                cancellationStatus === 'pending' &&
+                mySellerCancellationStatus === 'pending';
+              const sellerItems = getSellerItems(order, currentSellerId);
+              const pendingItemCount = sellerItems.filter((item) => {
+                const itemStatus = normalizeStatus(item?.status);
+                return !itemStatus || ['pending', 'processing', 'ready_to_ship'].includes(itemStatus);
+              }).length;
+              const showPendingCount = pendingItemCount > 0 && canMarkShipped;
+              return (
+                <article key={order.order_id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <label className="flex items-start gap-3">
+                      <input type="checkbox" className="mt-1 h-4 w-4 rounded border-slate-300" />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">#{order.order_id}</p>
+                        <p className="text-xs text-slate-500">{order.buyerLabel}</p>
+                      </div>
+                    </label>
+
+                    <div className="text-right text-xs text-slate-500">
+                      <p className="font-medium text-slate-700">Ngày đặt</p>
+                      <p>{formatDate(order.order_date)}</p>
+                    </div>
+
+                    <div className="ml-auto text-right">
+                      {hasPendingCancellation ? (
+                        <div className="flex flex-wrap justify-end gap-2">
                           <button
                             type="button"
-                            className="btn-primary px-3 py-1.5 text-xs"
-                            onClick={() => onMarkShipped(order.order_id)}
-                            disabled={shippingOrderId === order.order_id}
+                            className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-medium text-emerald-700"
+                            onClick={() => onApproveCancellation(order.order_id)}
+                            disabled={reviewingOrderId === order.order_id}
                           >
-                            {shippingOrderId === order.order_id ? 'Đang cập nhật...' : 'Đánh dấu đã gửi'}
+                            {reviewingOrderId === order.order_id ? 'Đang cập nhật...' : 'Duyệt hủy'}
                           </button>
-                        ) : (
-                          <span className="text-xs text-slate-400">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                          <button
+                            type="button"
+                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
+                            onClick={() => onRejectCancellation(order.order_id)}
+                            disabled={reviewingOrderId === order.order_id}
+                          >
+                            {reviewingOrderId === order.order_id ? 'Đang cập nhật...' : 'Từ chối'}
+                          </button>
+                        </div>
+                      ) : canMarkShipped ? (
+                        <button
+                          type="button"
+                          className="btn-primary px-3 py-1.5 text-xs"
+                          onClick={() => onMarkShipped(order.order_id)}
+                          disabled={shippingOrderId === order.order_id}
+                        >
+                          {shippingOrderId === order.order_id ? 'Đang cập nhật...' : 'Đánh dấu đã gửi'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400">-</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(240px,0.8fr)]">
+                    <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Sản phẩm cần gửi</p>
+                      {sellerItems.length ? (
+                        <div className="space-y-2">
+                          {sellerItems.map((item) => {
+                            const imageUrl = getItemImageUrl(item);
+                            const itemStatus = normalizeStatus(item?.status || mySellerStatus || order.status);
+                            return (
+                              <div key={item.order_item_id || item.id || `${order.order_id}-${item.book_id}`} className="flex min-w-0 gap-2 rounded-lg border border-slate-200 bg-white p-2">
+                                <div className="h-12 w-9 flex-shrink-0 overflow-hidden rounded border border-slate-200 bg-slate-100">
+                                  {imageUrl ? (
+                                    <img
+                                      src={imageUrl}
+                                      alt={getItemTitle(item)}
+                                      className="h-full w-full object-cover"
+                                      loading="lazy"
+                                    />
+                                  ) : null}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-medium text-slate-900">{getItemTitle(item)}</p>
+                                  <p className="mt-0.5 text-xs text-slate-500">
+                                    SL: {Number(item?.quantity || 0)} • {formatCurrency(getItemLineTotal(item))}
+                                  </p>
+                                  <span className={`mt-1 inline-flex max-w-full rounded-full px-2 py-0.5 text-[10px] font-medium ${getStatusBadgeClass(itemStatus)}`}>
+                                    {formatOrderStatus(itemStatus || 'pending')}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">Không có sản phẩm của seller này</span>
+                      )}
+                    </div>
+
+                    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tóm tắt</p>
+                      <div className="mt-3 space-y-3 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-slate-500">Tổng tiền</span>
+                          <span className="font-medium text-slate-900">{formatCurrency(order.total_amount)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-slate-500">Trạng thái đơn</span>
+                          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
+                            {formatOrderStatus(order.status || 'pending')}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-slate-500">Trạng thái mặt hàng</span>
+                          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(mySellerStatus)}`}>
+                            {formatOrderStatus(mySellerStatus || 'khong_xac_dinh')}{showPendingCount ? ` (${pendingItemCount})` : ''}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </div>

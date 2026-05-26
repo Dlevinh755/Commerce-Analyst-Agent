@@ -28,7 +28,7 @@ services:
       - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
       - CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk # Bắt buộc có mã base64 này cho Confluent KRaft
       - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://${KAFKA_PUBLIC_HOST:-localhost}:${KAFKA_PUBLIC_PORT:-9092},PLAINTEXT_INTERNAL://kafka:29092
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT_INTERNAL
@@ -37,6 +37,80 @@ services:
       - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
     volumes:
       - kafka_data:/var/lib/kafka/data # Đường dẫn chuẩn của Confluent
+  kafka-init:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: commerce-kafka-init
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+        echo '=> Waiting for Kafka to be ready...';
+        cub kafka-ready -b kafka:29092 1 30;
+        echo '=> Creating CDC topics for empty tables...';
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.payments      --partitions 1 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.cart          --partitions 1 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.payout_requests --partitions 1 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.reviews       --partitions 1 --replication-factor 1;
+        echo '=> Topics created.';
+      "
+    restart: on-failure
+
+  kafka-connect:
+    build: ./infra/kafka-connect
+    container_name: commerce-kafka-connect
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: "kafka:29092"
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: _connect_configs
+      OFFSET_STORAGE_TOPIC: _connect_offsets
+      STATUS_STORAGE_TOPIC: _connect_statuses
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "true"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "true"
+      CONNECT_CONFIG_PROVIDERS: "env"
+      CONNECT_CONFIG_PROVIDERS_ENV_CLASS: "org.apache.kafka.common.config.provider.EnvVarConfigProvider"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      S3_REGION: ${S3_REGION}
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:8083/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    depends_on:
+      - kafka
+      - postgres-db
+
+  connect-setup:
+    image: curlimages/curl:latest
+    container_name: commerce-connect-setup
+    depends_on:
+      kafka-connect:
+        condition: service_healthy
+    volumes:
+      - ./infra/kafka-connect/connectors:/config:ro
+    command: |
+      sh -c "
+        echo '=> Waiting 30s for backend services to seed data...';
+        sleep 30;
+        echo '=> Kafka Connect is healthy. Registering connectors...';
+        curl -s -X POST -H 'Content-Type: application/json' -d @/config/source-postgres.json http://kafka-connect:8083/connectors;
+        echo '';
+        echo '=> [OK] Source connector registered.';
+        curl -s -X POST -H 'Content-Type: application/json' -d @/config/sink-s3.json http://kafka-connect:8083/connectors;
+        echo '';
+        echo '=> [OK] S3 Sink connector registered.';
+        echo '=> All connectors configured successfully. Exiting.';
+      "
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest

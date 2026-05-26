@@ -95,7 +95,7 @@ export default function SellerProductsPage() {
           Chưa có sản phẩm. Hãy tạo sản phẩm đầu tiên bằng nút Thêm sản phẩm.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -105,7 +105,7 @@ export default function SellerProductsPage() {
                 <th className="px-4 py-3 text-left font-medium">Giá</th>
                 <th className="px-4 py-3 text-left font-medium">Tồn kho</th>
                 <th className="px-4 py-3 text-left font-medium">Trạng thái</th>
-                <th className="px-4 py-3 text-right font-medium">Thao tác</th>
+                <th className="px-4 py-3 text-right font-medium sticky right-0 bg-slate-50">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -136,8 +136,8 @@ export default function SellerProductsPage() {
                     <p>Ẩn: {product.is_hidden ? 'Có' : 'Không'}</p>
                     <p>Đã mua: {product.purchase_count || 0}</p>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-4 py-3 min-w-0 sticky right-0 bg-white z-10">
+                    <div className="flex justify-end gap-2 flex-shrink-0">
                       <Link
                         to={`/seller/products/${product.book_id}/edit`}
                         className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium"

@@ -123,11 +123,19 @@ export default function AdminBuyersPage() {
                       </button>
                       <button
                         type="button"
-                        className="rounded-lg border border-red-300 px-3 py-1.5 text-xs text-red-700"
-                        onClick={() => onHideBuyer(buyer.user_id)}
-                        disabled={savingUserId === buyer.user_id || buyer.is_hidden}
+                        className={`rounded-lg border px-3 py-1.5 text-xs ${
+                          buyer.is_hidden
+                            ? 'border-green-300 text-green-700'
+                            : 'border-red-300 text-red-700'
+                        }`}
+                        onClick={() =>
+                          buyer.is_hidden
+                            ? onPatchBuyer(buyer.user_id, { is_hidden: false }, 'Đã hiện lại người mua.')
+                            : onHideBuyer(buyer.user_id)
+                        }
+                        disabled={savingUserId === buyer.user_id}
                       >
-                        {buyer.is_hidden ? 'Đã ẩn' : 'Ẩn'}
+                        {buyer.is_hidden ? 'Hiện lại' : 'Ẩn'}
                       </button>
                     </div>
                   </td>

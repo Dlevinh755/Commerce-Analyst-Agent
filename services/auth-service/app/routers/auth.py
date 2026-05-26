@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from datetime import datetime, timezone
 
 from ..db import get_db
 from ..models import User, UserRole, RefreshToken
@@ -83,10 +84,25 @@ def login(credentials: OAuth2PasswordRequestForm = Depends(), db: Session = Depe
             detail="User account is inactive",
         )
 
+    # Keep refresh-token table clean so expired rows do not block new login attempts.
+    now_utc = datetime.now(timezone.utc)
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user.user_id,
+        RefreshToken.expires_at <= now_utc,
+    ).update({"is_revoked": True}, synchronize_session=False)
+
+    # Force-login policy: a newer login revokes all previous sessions immediately.
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user.user_id,
+        RefreshToken.is_revoked.is_(False),
+    ).update({"is_revoked": True}, synchronize_session=False)
+
+    user.token_version = int(user.token_version) + 1
+
     role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
 
-    access_token = create_access_token(user.user_id, user.username, role_value)
-    refresh_token = create_refresh_token(user.user_id, user.username, role_value)
+    access_token = create_access_token(user.user_id, user.username, role_value, user.token_version)
+    refresh_token = create_refresh_token(user.user_id, user.username, role_value, user.token_version)
 
     refresh_token_row = RefreshToken(
         user_id=user.user_id,
@@ -123,11 +139,15 @@ def refresh_token(data: RefreshTokenRequest, db: Session = Depends(get_db)):
     if not user.is_active or user.is_hidden:
         raise HTTPException(status_code=403, detail="User account is inactive")
 
+    token_version = payload.get("ver")
+    if token_version is None or int(token_version) != int(user.token_version):
+        raise HTTPException(status_code=401, detail="Session has been replaced by a newer login")
+
     token_in_db.is_revoked = True
 
     role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
-    new_access_token = create_access_token(user.user_id, user.username, role_value)
-    new_refresh_token = create_refresh_token(user.user_id, user.username, role_value)
+    new_access_token = create_access_token(user.user_id, user.username, role_value, user.token_version)
+    new_refresh_token = create_refresh_token(user.user_id, user.username, role_value, user.token_version)
 
     new_refresh_row = RefreshToken(
         user_id=user.user_id,
@@ -170,7 +190,7 @@ def change_password(
         raise HTTPException(status_code=400, detail="Old password is incorrect")
 
     current_user.password_hash = hash_password(data.new_password)
-    db.commit()
+    current_user.token_version = int(current_user.token_version) + 1
 
     db.query(RefreshToken).filter(RefreshToken.user_id == current_user.user_id).update(
         {"is_revoked": True}

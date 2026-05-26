@@ -11,11 +11,14 @@ const FEE_RATES = {
 };
 
 function parseVndAmount(value) {
-  const digitsOnly = String(value || '').replace(/[^\d]/g, '');
+  const raw = String(value || '').trim();
+  const isNegative = raw.startsWith('-');
+  const digitsOnly = raw.replace(/[^\d]/g, '');
   if (!digitsOnly) {
     return 0;
   }
-  return Number(digitsOnly);
+  const parsed = Number(digitsOnly);
+  return isNegative ? -parsed : parsed;
 }
 
 function formatStatus(status) {
@@ -148,6 +151,11 @@ export default function PayoutsPage() {
           {amount > 0 && totalDebit > balance ? (
             <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
               Tổng tiền rút và phí không được vượt quá số dư.
+            </p>
+          ) : null}
+          {amountInput.trim() && amount <= 0 ? (
+            <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              Số tiền rút phải lớn hơn 0.
             </p>
           ) : null}
 

@@ -8,10 +8,17 @@ const hmrClientPort = process.env.VITE_HMR_CLIENT_PORT;
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    dedupe: ['react', 'react-dom'],
+    dedupe: ['react', 'react-dom', 'use-sync-external-store'],
   },
   optimizeDeps: {
-    include: ['react', 'react-dom'],
+    include: [
+      'react',
+      'react-dom',
+      'use-sync-external-store',
+      'use-sync-external-store/with-selector',
+      'zustand',
+      'zustand/middleware',
+    ],
   },
   server: {
     port: 5173,

@@ -18,7 +18,9 @@ export default function BookListPage() {
   const [searchParams] = useSearchParams();
   const searchFromUrl = searchParams.get('search') || '';
   const user = useAuth((state) => state.user);
+  const userRole = String(user?.role || '').toLowerCase();
   const username = user?.username || '';
+  const shouldShowRecommendations = Boolean(username && userRole !== 'seller' && userRole !== 'admin');
 
   const [books, setBooks] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -61,7 +63,7 @@ export default function BookListPage() {
   useEffect(() => {
     async function fetchRecommended() {
       try {
-        if (!username) {
+        if (!shouldShowRecommendations) {
           setRecommended([]);
           setRecommendLoading(false);
           return;
@@ -116,7 +118,7 @@ export default function BookListPage() {
     }
 
     fetchRecommended();
-  }, [username]);
+  }, [shouldShowRecommendations, username]);
 
   const categoryMap = useMemo(() => {
     return new Map(categories.map((category) => [category.name, category.category_id]));
@@ -227,7 +229,7 @@ export default function BookListPage() {
         />
 
         <div>
-          {username ? (
+          {shouldShowRecommendations ? (
             <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-slate-800">Gợi ý cho bạn</h2>

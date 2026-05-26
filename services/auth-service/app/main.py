@@ -245,6 +245,9 @@ with engine.begin() as connection:
     connection.execute(
         text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE")
     )
+    connection.execute(
+        text("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0")
+    )
 seed_admin_user()
 _apply_seed_users(_load_dev_seed_data())
 

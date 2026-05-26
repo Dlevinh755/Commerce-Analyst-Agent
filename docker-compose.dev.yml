@@ -388,7 +388,7 @@ services:
     environment:
       - VITE_API_BASE_URL=/api/v1
       - VITE_DEV_PROXY_TARGET=http://gateway:80
-      - VITE_HMR_HOST=
+      - VITE_HMR_HOST=bookstore.ailab.engineer
       - VITE_HMR_PROTOCOL=wss
       - VITE_HMR_CLIENT_PORT=443
     depends_on:
@@ -396,11 +396,11 @@ services:
     networks:
       - default
     
-  # cloudflared:
-  #   image: cloudflare/cloudflared:latest
-  #   container_name: commerce-cloudflared
-  #   restart: unless-stopped
-  #   command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: commerce-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
   
 volumes:
   postgres_data:

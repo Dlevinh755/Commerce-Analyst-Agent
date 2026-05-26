@@ -108,6 +108,31 @@ server {
         proxy_pass $recommender_upstream;
     }
 
+    # Điều hướng Analytics Agent Service (FastAPI)
+    # Client gọi: /api/v1/analytics/... → analytics-agent nhận: /...
+    # Ví dụ: /api/v1/analytics/api/query/stream → /api/query/stream
+    # Note: container listens on port 8000 (host-mapped to 8007)
+    location ^~ /api/v1/analytics/ {
+        set $analytics_upstream http://${ANALYTICS_AGENT_SERVICE_HOST}:8000;
+        rewrite ^/api/v1/analytics/(.*)$ /$1 break;
+        proxy_pass $analytics_upstream;
+        # SSE / streaming support
+        proxy_buffering             off;
+        proxy_cache                 off;
+        proxy_read_timeout          3600s;
+        proxy_set_header Connection "";
+        chunked_transfer_encoding   on;
+    }
+
+    # Điều hướng Payout Service (FastAPI)
+    # Client gọi: /api/v1/payouts/... → payout-service nhận: /payouts/...
+    location /api/v1/payouts {
+        set $payout_upstream http://${PAYOUT_SERVICE_HOST}:${PAYOUT_SERVICE_PORT};
+        rewrite ^/api/v1/payouts$ /payouts break;
+        rewrite ^/api/v1/payouts/(.*)$ /payouts/$1 break;
+        proxy_pass $payout_upstream;
+    }
+
     # Điều hướng callback IPN VNPay về endpoint gốc của Django.
     location = /api/v1/vnpay/payment_ipn {
         set $vnpay_upstream http://${VNPAY_SERVICE_HOST}:${VNPAY_SERVICE_PORT};

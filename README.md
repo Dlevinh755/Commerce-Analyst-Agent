@@ -1,39 +1,39 @@
 # Commerce Analyst Agent
 
-## Quick Start
+## Hướng Dẫn Nhanh
 
-### 1. Prepare environment
+### 1. Chuẩn bị môi trường
 
-Copy the sample environment file if you do not already have a local `.env`:
+Sao chép file môi trường mẫu nếu bạn chưa có file `.env` cục bộ:
 
 ```bash
 cp .env.example .env
 ```
 
-Update the values in `.env` for your local machine.
+Cập nhật các giá trị trong `.env` phù hợp với máy của bạn.
 
-### 2. Start local development stack
+### 2. Khởi động môi trường phát triển local
 
-This repo uses Docker Compose files under `compose/` and small wrapper scripts to keep commands short across Windows, Linux, and macOS.
+Repo này sử dụng các file Docker Compose trong thư mục `compose/` cùng các script wrapper nhỏ để rút gọn lệnh trên Windows, Linux và macOS.
 
-Start the main stack on Windows CMD or PowerShell:
+Khởi động stack chính trên Windows CMD hoặc PowerShell:
 
 ```bat
-dev up
+ .\dev.ps1  up hoặc (.\dev.cmd up trên CMD)
 ```
 
-Start the main stack on Linux, macOS, Git Bash, or WSL:
+Khởi động stack chính trên Linux, macOS, Git Bash hoặc WSL:
 
 ```bash
 ./dev.sh up
 ```
 
-Start the main stack plus optional tools such as Kafka UI.
+Khởi động stack chính kèm các công cụ tùy chọn như Kafka UI.
 
 Windows:
 
 ```bat
-dev up-tools
+.\dev.ps1 up-tools
 ```
 
 Linux/macOS:
@@ -42,18 +42,18 @@ Linux/macOS:
 ./dev.sh up-tools
 ```
 
-Common Windows commands:
+Các lệnh thường dùng trên Windows:
 
 ```bat
-dev ps
-dev logs order_service
-dev restart gateway
-dev config
-dev build
-dev down
+.\dev.ps1 ps
+.\dev.ps1 logs order_service
+.\dev.ps1 restart gateway
+.\dev.ps1 config
+.\dev.ps1 build
+.\dev.ps1 down
 ```
 
-Common Linux/macOS commands:
+Các lệnh thường dùng trên Linux/macOS:
 
 ```bash
 ./dev.sh ps
@@ -64,18 +64,18 @@ Common Linux/macOS commands:
 ./dev.sh down
 ```
 
-### 3. Compose layout
+### 3. Cấu trúc Compose
 
-- `compose/infra.yml`: Postgres, Kafka, Cloudflared, shared volumes, shared networks.
-- `compose/app.yml`: Gateway, backend services, analytics service, frontend.
-- `compose/tools.yml`: Optional tools such as Kafka UI.
-- `dev.cmd`: Short commands for Windows CMD and PowerShell.
-- `dev.sh`: Short commands for Linux, macOS, Git Bash, and WSL.
-- `dev.ps1`: PowerShell helper kept for compatibility.
-- `docker-compose.dev.yml`: Legacy single-file dev compose kept for compatibility.
-- `docker-compose.prod.yml`: Reserved for production compose configuration.
+- `compose/infra.yml`: Postgres, Kafka, Cloudflared, volume dùng chung, network dùng chung.
+- `compose/app.yml`: Gateway, các backend service, analytics service, frontend.
+- `compose/tools.yml`: Các công cụ tùy chọn như Kafka UI.
+- `dev.cmd`: Lệnh rút gọn cho Windows CMD và PowerShell.
+- `dev.sh`: Lệnh rút gọn cho Linux, macOS, Git Bash và WSL.
+- `dev.ps1`: Script PowerShell giữ lại để tương thích.
+- `docker-compose.dev.yml`: File compose dev dạng cũ (single-file), giữ lại để tương thích.
+- `docker-compose.prod.yml`: Dành cho cấu hình production compose.
 
-### 4. Local endpoints
+### 4. Endpoint local
 
 - Gateway: `http://localhost/health`
 - Frontend: `http://localhost:5175`
@@ -85,16 +85,16 @@ Common Linux/macOS commands:
 - Order service: `http://localhost:8003/health`
 - Review service: `http://localhost:8006/health`
 - Payout service: `http://localhost:8008/health`
-- Kafka UI: `http://localhost:8080` after `dev up-tools` on Windows or `./dev.sh up-tools` on Linux/macOS.
+- Kafka UI: `http://localhost:8080` sau khi chạy `dev up-tools` trên Windows hoặc `./dev.sh up-tools` trên Linux/macOS.
 
-### 5. Stop containers
+### 5. Dừng container
 
-Stop the stack:
+Dừng toàn bộ stack:
 
 Windows:
 
 ```bat
-dev down
+.\dev.ps1 down
 ```
 
 Linux/macOS:
@@ -103,7 +103,7 @@ Linux/macOS:
 ./dev.sh down
 ```
 
-Remove volumes too if you want to wipe local data:
+Xóa luôn volume nếu bạn muốn làm sạch dữ liệu local:
 
 ```powershell
 docker compose --env-file .env -f compose/infra.yml -f compose/app.yml -f compose/tools.yml down -v

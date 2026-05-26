@@ -123,11 +123,19 @@ export default function AdminSellersPage() {
                       </button>
                       <button
                         type="button"
-                        className="rounded-lg border border-red-300 px-3 py-1.5 text-xs text-red-700"
-                        onClick={() => onHideSeller(seller.user_id)}
-                        disabled={savingUserId === seller.user_id || seller.is_hidden}
+                        className={`rounded-lg border px-3 py-1.5 text-xs ${
+                          seller.is_hidden
+                            ? 'border-green-300 text-green-700'
+                            : 'border-red-300 text-red-700'
+                        }`}
+                        onClick={() =>
+                          seller.is_hidden
+                            ? onPatchSeller(seller.user_id, { is_hidden: false }, 'Đã hiện lại người bán.')
+                            : onHideSeller(seller.user_id)
+                        }
+                        disabled={savingUserId === seller.user_id}
                       >
-                        {seller.is_hidden ? 'Đã ẩn' : 'Ẩn'}
+                        {seller.is_hidden ? 'Hiện lại' : 'Ẩn'}
                       </button>
                     </div>
                   </td>

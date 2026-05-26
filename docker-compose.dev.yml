@@ -2,6 +2,7 @@ services:
   postgres-db:
     image: postgres:15-alpine
     container_name: commerce-postgres
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -27,7 +28,7 @@ services:
       - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
       - CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk # Bắt buộc có mã base64 này cho Confluent KRaft
       - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://${KAFKA_PUBLIC_HOST:-localhost}:${KAFKA_PUBLIC_PORT:-9092},PLAINTEXT_INTERNAL://kafka:29092
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT_INTERNAL
@@ -36,6 +37,80 @@ services:
       - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
     volumes:
       - kafka_data:/var/lib/kafka/data # Đường dẫn chuẩn của Confluent
+  kafka-init:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: commerce-kafka-init
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+        echo '=> Waiting for Kafka to be ready...';
+        cub kafka-ready -b kafka:29092 1 30;
+        echo '=> Creating CDC topics for empty tables...';
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.payments      --partitions 1 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.cart          --partitions 1 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.payout_requests --partitions 1 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.reviews       --partitions 1 --replication-factor 1;
+        echo '=> Topics created.';
+      "
+    restart: on-failure
+
+  kafka-connect:
+    build: ./infra/kafka-connect
+    container_name: commerce-kafka-connect
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: "kafka:29092"
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: _connect_configs
+      OFFSET_STORAGE_TOPIC: _connect_offsets
+      STATUS_STORAGE_TOPIC: _connect_statuses
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "true"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "true"
+      CONNECT_CONFIG_PROVIDERS: "env"
+      CONNECT_CONFIG_PROVIDERS_ENV_CLASS: "org.apache.kafka.common.config.provider.EnvVarConfigProvider"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      S3_REGION: ${S3_REGION}
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:8083/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    depends_on:
+      - kafka
+      - postgres-db
+
+  connect-setup:
+    image: curlimages/curl:latest
+    container_name: commerce-connect-setup
+    depends_on:
+      kafka-connect:
+        condition: service_healthy
+    volumes:
+      - ./infra/kafka-connect/connectors:/config:ro
+    command: |
+      sh -c "
+        echo '=> Waiting 30s for backend services to seed data...';
+        sleep 30;
+        echo '=> Kafka Connect is healthy. Registering connectors...';
+        curl -s -X POST -H 'Content-Type: application/json' -d @/config/source-postgres.json http://kafka-connect:8083/connectors;
+        echo '';
+        echo '=> [OK] Source connector registered.';
+        curl -s -X POST -H 'Content-Type: application/json' -d @/config/sink-s3.json http://kafka-connect:8083/connectors;
+        echo '';
+        echo '=> [OK] S3 Sink connector registered.';
+        echo '=> All connectors configured successfully. Exiting.';
+      "
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -72,6 +147,8 @@ services:
       - PAYOUT_SERVICE_PORT=${PAYOUT_SERVICE_PORT:-8008}
       - REVIEW_SERVICE_HOST=review_service
       - REVIEW_SERVICE_PORT=${REVIEW_SERVICE_PORT:-8006}
+      - RECOMMENDER_SERVICE_HOST=${RECOMMENDER_SERVICE_HOST}
+      - RECOMMENDER_SERVICE_PORT=${RECOMMENDER_SERVICE_PORT}
       - VNPAY_SERVICE_HOST=vnpay_service
       - VNPAY_SERVICE_PORT=${VNPAY_SERVICE_PORT:-8005}
       - KAFKA_UI_HOST=${KAFKA_UI_HOST}
@@ -178,6 +255,12 @@ services:
     depends_on:
       product-service:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   payment_service:
     build: ./services/payment-service
@@ -219,12 +302,48 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - ORDER_SERVICE_URL=http://order_service:8003
       - PRODUCT_SERVICE_URL=http://product-service:8001
+      - DEV_AUTO_SEED=true
+      - DEV_SEED_FILE=/app/dev-seeds.json
     ports:
       - "${REVIEW_SERVICE_PORT:-8006}:8006"
+    volumes:
+      - ./dev-seeds.json:/app/dev-seeds.json:ro
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      order_service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+
+  recommender-service:
+    build:
+      context: ./services/recommender-service
+      dockerfile: dockerfile
+    container_name: commerce-recommender-service
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - RECOMMENDER_DATA_SOURCE=${RECOMMENDER_DATA_SOURCE:-databricks}
+      - DATABRICKS_HOST=${DATABRICKS_HOST}
+      - DATABRICKS_HTTP_PATH=${DATABRICKS_HTTP_PATH}
+      - DATABRICKS_ACCESS_TOKEN=${DATABRICKS_TOKEN}
+      - DATABRICKS_CATALOG=${DATABRICKS_CATALOG_NAME}
+      - DATABRICKS_SCHEMA=${DATABRICKS_SCHEMA_NAME}
+      - DATABRICKS_USERS_SOURCE=${DATABRICKS_USERS_SOURCE}
+      - DATABRICKS_PRODUCTS_SOURCE=${DATABRICKS_PRODUCTS_SOURCE}
+      - DATABRICKS_INTERACTIONS_SOURCE=${DATABRICKS_INTERACTIONS_SOURCE}
+      - DATABRICKS_REVIEWS_SOURCE=${DATABRICKS_REVIEWS_SOURCE}
+      - DATABRICKS_PRODUCTS_SQL=SELECT CAST(book_id AS STRING) AS product_id, title, '' AS seller_username, COALESCE(author, 'Unknown') AS author, COALESCE(category_name, 'Unknown') AS category, COALESCE(price, 0) AS price, '' AS image_url FROM dim_books
+      - DATABRICKS_INTERACTIONS_SQL=SELECT u.username AS buyer_username, CAST(s.book_id AS STRING) AS product_id, SUM(COALESCE(s.quantity, 1)) AS quantity FROM fact_sales s JOIN dim_users u ON s.buyer_id = u.user_id GROUP BY u.username, s.book_id
+      - DATABRICKS_REVIEWS_SQL=SELECT CAST(book_id AS STRING) AS product_id, AVG(COALESCE(score, 0)) AS rating_average, MAX(COALESCE(total_reviews_at_snapshot, 0)) AS review_count FROM fact_reviews GROUP BY book_id
+    ports:
+      - "${RECOMMENDER_SERVICE_PORT:-8009}:8009"
+    volumes:
+      - ./dev-seeds.json:/app/dev-seeds.json:ro
     depends_on:
       - postgres-db
-      - order_service
-      - product-service
 
   vnpay_service:
     build: ./services/vnpay-service

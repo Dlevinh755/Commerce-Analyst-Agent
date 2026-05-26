@@ -116,12 +116,6 @@ export default function CartPage() {
                     </div>
 
                     <div className="flex w-full flex-col items-stretch gap-2 text-sm sm:w-48 sm:flex-shrink-0">
-                      <Link
-                        to={`/books?search=${encodeURIComponent(item.title)}`}
-                        className="w-full rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-center text-xs font-medium leading-tight text-amber-800 hover:bg-amber-200"
-                      >
-                        Gợi ý sản phẩm tương tự
-                      </Link>
                       <button
                         type="button"
                         className="w-full rounded-lg border border-red-200 bg-red-100 px-3 py-1 text-xs font-medium text-red-700 transition hover:bg-red-200"

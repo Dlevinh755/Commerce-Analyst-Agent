@@ -6,7 +6,7 @@ import { formatCurrencyVND } from '../../utils/currency';
 const FALLBACK_COVER =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420"><rect width="100%" height="100%" fill="%23e2e8f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2364748b" font-family="Arial" font-size="28">Khong co anh</text></svg>';
 
-export default function BookCard({ book, onUnauthorized, onAddedToCart }) {
+export default function BookCard({ book, onUnauthorized, onAddedToCart, compactActions = false }) {
   const addItem = useCart((state) => state.addItem);
   const isAuthenticated = useAuth((state) => state.isAuthenticated);
   const navigate = useNavigate();
@@ -63,10 +63,19 @@ export default function BookCard({ book, onUnauthorized, onAddedToCart }) {
         </div>
         <p className="text-xs text-slate-500">Đã mua: {book.purchaseCount || 0}</p>
         <div className="mt-auto flex gap-2 pt-3">
-          <Link to={`/books/${book.id}`} className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-medium">
+          <Link
+            to={`/books/${book.id}`}
+            className={`flex-1 rounded-lg border border-slate-300 text-center font-medium ${
+              compactActions ? 'px-2 py-2 text-xs' : 'px-3 py-2 text-sm'
+            }`}
+          >
             Xem
           </Link>
-          <button type="button" className="btn-primary flex-1 whitespace-nowrap" onClick={addToCart}>
+          <button
+            type="button"
+            className={`btn-primary flex-1 whitespace-nowrap ${compactActions ? 'px-2 text-xs' : ''}`}
+            onClick={addToCart}
+          >
             Thêm vào giỏ
           </button>
         </div>

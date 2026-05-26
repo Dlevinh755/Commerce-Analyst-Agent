@@ -36,6 +36,14 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
+
+    token_version = payload.get("ver")
+    if token_version is None or int(token_version) != int(user.token_version):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired. Please login again.",
+        )
+
     if not user.is_active or user.is_hidden:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -23,6 +23,7 @@ class User(Base):
     balance = Column(Numeric(14, 2), nullable=False, default=0)
     is_active = Column(Boolean, nullable=False, default=True)
     is_hidden = Column(Boolean, nullable=False, default=False)
+    token_version = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, server_default=func.current_timestamp())
 
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")

@@ -127,6 +127,18 @@ def _apply_seed_products(seed_data: dict) -> None:
 
                 is_active = bool(entry.get("is_active", True))
                 is_hidden = bool(entry.get("is_hidden", False))
+                try:
+                    purchase_count = int(entry.get("purchase_count", 0))
+                except Exception:
+                    purchase_count = 0
+                try:
+                    rating_avg = float(entry.get("rating_avg", 0))
+                except Exception:
+                    rating_avg = 0.0
+                try:
+                    rating_count = int(entry.get("rating_count", 0))
+                except Exception:
+                    rating_count = 0
 
                 existing_book = connection.execute(
                     text(
@@ -156,6 +168,9 @@ def _apply_seed_products(seed_data: dict) -> None:
                                 price = :price,
                                 stock_quantity = :stock_quantity,
                                 image_url = :image_url,
+                                purchase_count = :purchase_count,
+                                rating_avg = :rating_avg,
+                                rating_count = :rating_count,
                                 is_active = :is_active,
                                 is_hidden = :is_hidden
                             WHERE book_id = :book_id
@@ -169,6 +184,9 @@ def _apply_seed_products(seed_data: dict) -> None:
                             "price": price,
                             "stock_quantity": stock_quantity,
                             "image_url": image_url,
+                            "purchase_count": purchase_count,
+                            "rating_avg": rating_avg,
+                            "rating_count": rating_count,
                             "is_active": is_active,
                             "is_hidden": is_hidden,
                         },
@@ -202,9 +220,9 @@ def _apply_seed_products(seed_data: dict) -> None:
                                 :price,
                                 :stock_quantity,
                                 :image_url,
-                                0,
-                                0,
-                                0,
+                                :purchase_count,
+                                :rating_avg,
+                                :rating_count,
                                 :is_active,
                                 :is_hidden
                             )
@@ -220,6 +238,9 @@ def _apply_seed_products(seed_data: dict) -> None:
                             "price": price,
                             "stock_quantity": stock_quantity,
                             "image_url": image_url,
+                            "purchase_count": purchase_count,
+                            "rating_avg": rating_avg,
+                            "rating_count": rating_count,
                             "is_active": is_active,
                             "is_hidden": is_hidden,
                         },

@@ -26,20 +26,27 @@ def _create_token(data: dict, expires_delta: timedelta) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_access_token(user_id: int, username: str, role: str) -> str:
+def create_access_token(user_id: int, username: str, role: str, token_version: int) -> str:
     return _create_token(
-        {"sub": str(user_id), "username": username, "role": role, "type": "access"},
+        {
+            "sub": str(user_id),
+            "username": username,
+            "role": role,
+            "type": "access",
+            "ver": int(token_version),
+        },
         timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
 
-def create_refresh_token(user_id: int, username: str, role: str) -> str:
+def create_refresh_token(user_id: int, username: str, role: str, token_version: int) -> str:
     return _create_token(
         {
             "sub": str(user_id),
             "username": username,
             "role": role,
             "type": "refresh",
+            "ver": int(token_version),
             "jti": str(uuid.uuid4()),  # unique per token, prevents collision
         },
         timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),

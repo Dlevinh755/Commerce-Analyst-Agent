@@ -27,17 +27,24 @@ function formatInitialPrice(value) {
 }
 
 function parseVndPriceInput(value) {
-  const digitsOnly = String(value || '').replace(/[^\d]/g, '');
+  const raw = String(value || '').trim();
+  const isNegative = raw.startsWith('-');
+  const digitsOnly = raw.replace(/[^\d]/g, '');
   if (!digitsOnly) {
     return NaN;
   }
-  return Number(digitsOnly);
+  const parsed = Number(digitsOnly);
+  return isNegative ? -parsed : parsed;
 }
 
 function normalizeInitialValues(initialValues = {}) {
   return {
     ...defaultForm,
     ...initialValues,
+    title: initialValues.title ?? '',
+    author: initialValues.author ?? '',
+    description: initialValues.description ?? '',
+    image_url: initialValues.image_url ?? '',
     category_name:
       initialValues.category?.name ?? initialValues.category_name ?? initialValues.categoryName ?? '',
     price: formatInitialPrice(initialValues.price),

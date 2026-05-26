@@ -1,7 +1,16 @@
 import api from './http';
 
 export const authService = {
-  login: (payload) => api.post('/auth/login', payload),
+  login: (payload) => {
+    const body = new URLSearchParams();
+    body.set('username', payload.username || '');
+    body.set('password', payload.password || '');
+    return api.post('/auth/login', body, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+  },
   register: (payload) => api.post('/auth/register', payload),
   refresh: (payload) => api.post('/auth/refresh', payload, { __skipAuthRefresh: true }),
   logout: (payload) => api.post('/auth/logout', payload, { __skipAuthRefresh: true }),

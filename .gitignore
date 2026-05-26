@@ -7,3 +7,4 @@ node_modules/*
 node_modules/
 dist/
 services/product-service/uploads/*
+services/analytics-agent-service/logs/*

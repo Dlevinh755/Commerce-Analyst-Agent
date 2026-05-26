@@ -253,6 +253,12 @@ services:
     depends_on:
       product-service:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   payment_service:
     build: ./services/payment-service
@@ -301,9 +307,12 @@ services:
     volumes:
       - ./dev-seeds.json:/app/dev-seeds.json:ro
     depends_on:
-      - postgres-db
-      - order_service
-      - product-service
+      postgres-db:
+        condition: service_healthy
+      order_service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
 
   vnpay_service:
     build: ./services/vnpay-service

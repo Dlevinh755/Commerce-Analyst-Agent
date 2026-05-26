@@ -1,0 +1,6 @@
+fastapi==0.115.12
+uvicorn[standard]==0.32.1
+numpy==1.26.4
+scikit-learn==1.5.2
+databricks-sql-connector==3.5.0
+kafka-python

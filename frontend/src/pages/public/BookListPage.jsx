@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SearchBar from '../../components/common/SearchBar';
 import FilterPanel from '../../components/common/FilterPanel';
+import BookCard from '../../components/common/BookCard';
 import BookGrid from '../../components/common/BookGrid';
 import Pagination from '../../components/common/Pagination';
 import Toast from '../../components/common/Toast';
+import useAuth from '../../hooks/useAuth';
 import { bookService } from '../../services/bookService';
+import { recommenderService } from '../../services/recommenderService';
 import { sellerProductService } from '../../services/sellerProductService';
 import { normalizeBook } from '../../utils/bookMapper';
 
@@ -14,6 +17,8 @@ const ITEMS_PER_PAGE = 6;
 export default function BookListPage() {
   const [searchParams] = useSearchParams();
   const searchFromUrl = searchParams.get('search') || '';
+  const user = useAuth((state) => state.user);
+  const username = user?.username || '';
 
   const [books, setBooks] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -21,6 +26,8 @@ export default function BookListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
+  const [recommended, setRecommended] = useState([]);
+  const [recommendLoading, setRecommendLoading] = useState(false);
 
   const [searchText, setSearchText] = useState(searchFromUrl);
   const [appliedSearch, setAppliedSearch] = useState(searchFromUrl);
@@ -50,6 +57,66 @@ export default function BookListPage() {
 
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    async function fetchRecommended() {
+      try {
+        if (!username) {
+          setRecommended([]);
+          setRecommendLoading(false);
+          return;
+        }
+
+        setRecommendLoading(true);
+
+        const payload = {
+          username,
+          clicked_product_title: '',
+          clicked_seller_username: null,
+          clicked_category: null,
+          top_n: 5,
+        };
+        const { data } = await recommenderService.recommendByCF(payload);
+        const rawItems = Array.isArray(data?.recommendations) ? data.recommendations : [];
+        const baseItems = rawItems.slice(0, 5).map((entry) => {
+          if (Array.isArray(entry)) {
+            const [bookId] = entry;
+            return { product_id: bookId ?? null };
+          }
+
+          if (typeof entry === 'number') {
+            return { product_id: entry };
+          }
+
+          return { product_id: entry?.product_id ?? entry?.book_id ?? entry?.id ?? null };
+        });
+
+        const detailResponses = await Promise.all(
+          baseItems.map((entry) =>
+            entry.product_id
+              ? bookService
+                  .detail(entry.product_id)
+                  .then((response) => response.data)
+                  .catch(() => null)
+              : Promise.resolve(null)
+          )
+        );
+
+        const normalized = detailResponses
+          .filter(Boolean)
+          .map(normalizeBook)
+          .filter((book) => book.id !== undefined);
+
+        setRecommended(normalized.slice(0, 5));
+      } catch {
+        setRecommended([]);
+      } finally {
+        setRecommendLoading(false);
+      }
+    }
+
+    fetchRecommended();
+  }, [username]);
 
   const categoryMap = useMemo(() => {
     return new Map(categories.map((category) => [category.name, category.category_id]));
@@ -160,6 +227,31 @@ export default function BookListPage() {
         />
 
         <div>
+          {username ? (
+            <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-slate-800">Gợi ý cho bạn</h2>
+              </div>
+              {recommendLoading ? (
+                <div className="text-sm text-slate-600">Đang tải gợi ý...</div>
+              ) : recommended.length === 0 ? (
+                <div className="text-sm text-slate-600">Hiện chưa có gợi ý phù hợp.</div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {recommended.map((book) => (
+                    <BookCard
+                      key={book.id}
+                      book={book}
+                      onUnauthorized={setToast}
+                      onAddedToCart={setToast}
+                      compactActions
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
+
           {loading ? (
             <div className="card text-slate-600">Đang tải sách...</div>
           ) : (
@@ -168,6 +260,7 @@ export default function BookListPage() {
                 <div className="card text-slate-600">Không có sách phù hợp.</div>
               ) : (
                 <>
+                  <h4 className="mb-3 text-lg font-semibold text-slate-800">Sách nổi bật</h4>
                   <BookGrid books={displayBooks} onUnauthorized={setToast} onAddedToCart={setToast} />
                   <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
                 </>

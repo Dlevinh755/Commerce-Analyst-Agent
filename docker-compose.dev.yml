@@ -147,6 +147,8 @@ services:
       - PAYOUT_SERVICE_PORT=${PAYOUT_SERVICE_PORT:-8008}
       - REVIEW_SERVICE_HOST=review_service
       - REVIEW_SERVICE_PORT=${REVIEW_SERVICE_PORT:-8006}
+      - RECOMMENDER_SERVICE_HOST=${RECOMMENDER_SERVICE_HOST}
+      - RECOMMENDER_SERVICE_PORT=${RECOMMENDER_SERVICE_PORT}
       - VNPAY_SERVICE_HOST=vnpay_service
       - VNPAY_SERVICE_PORT=${VNPAY_SERVICE_PORT:-8005}
       - KAFKA_UI_HOST=${KAFKA_UI_HOST}
@@ -314,6 +316,35 @@ services:
       product-service:
         condition: service_healthy
 
+  recommender-service:
+    build:
+      context: ./services/recommender-service
+      dockerfile: dockerfile
+    container_name: commerce-recommender-service
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - RECOMMENDER_DATA_SOURCE=${RECOMMENDER_DATA_SOURCE:-databricks}
+      - DATABRICKS_HOST=${DATABRICKS_HOST}
+      - DATABRICKS_HTTP_PATH=${DATABRICKS_HTTP_PATH}
+      - DATABRICKS_ACCESS_TOKEN=${DATABRICKS_TOKEN}
+      - DATABRICKS_CATALOG=${DATABRICKS_CATALOG_NAME}
+      - DATABRICKS_SCHEMA=${DATABRICKS_SCHEMA_NAME}
+      - DATABRICKS_USERS_SOURCE=${DATABRICKS_USERS_SOURCE}
+      - DATABRICKS_PRODUCTS_SOURCE=${DATABRICKS_PRODUCTS_SOURCE}
+      - DATABRICKS_INTERACTIONS_SOURCE=${DATABRICKS_INTERACTIONS_SOURCE}
+      - DATABRICKS_REVIEWS_SOURCE=${DATABRICKS_REVIEWS_SOURCE}
+      - DATABRICKS_PRODUCTS_SQL=SELECT CAST(book_id AS STRING) AS product_id, title, '' AS seller_username, COALESCE(author, 'Unknown') AS author, COALESCE(category_name, 'Unknown') AS category, COALESCE(price, 0) AS price, '' AS image_url FROM dim_books
+      - DATABRICKS_INTERACTIONS_SQL=SELECT u.username AS buyer_username, CAST(s.book_id AS STRING) AS product_id, SUM(COALESCE(s.quantity, 1)) AS quantity FROM fact_sales s JOIN dim_users u ON s.buyer_id = u.user_id GROUP BY u.username, s.book_id
+      - DATABRICKS_REVIEWS_SQL=SELECT CAST(book_id AS STRING) AS product_id, AVG(COALESCE(score, 0)) AS rating_average, MAX(COALESCE(total_reviews_at_snapshot, 0)) AS review_count FROM fact_reviews GROUP BY book_id
+    ports:
+      - "${RECOMMENDER_SERVICE_PORT:-8009}:8009"
+    volumes:
+      - ./dev-seeds.json:/app/dev-seeds.json:ro
+    depends_on:
+      - postgres-db
+
   vnpay_service:
     build: ./services/vnpay-service
     container_name: commerce-vnpay-service
@@ -357,7 +388,7 @@ services:
     environment:
       - VITE_API_BASE_URL=/api/v1
       - VITE_DEV_PROXY_TARGET=http://gateway:80
-      - VITE_HMR_HOST=bookstore.ailab.engineer
+      - VITE_HMR_HOST=
       - VITE_HMR_PROTOCOL=wss
       - VITE_HMR_CLIENT_PORT=443
     depends_on:
@@ -365,11 +396,11 @@ services:
     networks:
       - default
     
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: commerce-cloudflared
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: commerce-cloudflared
+  #   restart: unless-stopped
+  #   command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
   
 volumes:
   postgres_data:

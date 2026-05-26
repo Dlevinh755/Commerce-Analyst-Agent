@@ -1,7 +1,6 @@
 server {
     listen ${GATEWAY_PORT};
     server_name ${DOMAIN_NAME};
-    client_max_body_size 25M;
 
     set $cors_origin "";
     if ($http_origin ~* ^http://(localhost|127\.0\.0\.1):(5173|5174|5175)$) {
@@ -86,15 +85,6 @@ server {
         proxy_pass $payment_upstream;
     }
 
-    # Điều hướng Payout Service (FastAPI)
-    # Client gọi: /api/v1/payouts/... -> payout-service nhận: /payouts/...
-    location /api/v1/payouts {
-        set $payout_upstream http://${PAYOUT_SERVICE_HOST}:${PAYOUT_SERVICE_PORT};
-        rewrite ^/api/v1/payouts$ /payouts break;
-        rewrite ^/api/v1/payouts/(.*)$ /payouts/$1 break;
-        proxy_pass $payout_upstream;
-    }
-
     # Điều hướng Review Service (FastAPI)
     # Client gọi: /api/v1/reviews/... → review-service nhận: /reviews/...
     location /api/v1/reviews {
@@ -104,12 +94,18 @@ server {
         proxy_pass $review_upstream;
     }
 
-    # Điều hướng Analytics Agent (FastAPI)
-    # Client gọi: /api/v1/analytics/... → analytics-agent nhận: /...
-    location /api/v1/analytics/ {
-        set $analytics_upstream http://${ANALYTICS_AGENT_SERVICE_HOST}:8000;
-        rewrite ^/api/v1/analytics/(.*)$ /$1 break;
-        proxy_pass $analytics_upstream;
+    # Điều hướng Recommender Service (FastAPI)
+    # Client gọi: /api/v1/recommendations/... → recommender-service nhận: /recommendations/...
+    location = /api/v1/recommendations {
+        set $recommender_upstream http://${RECOMMENDER_SERVICE_HOST}:${RECOMMENDER_SERVICE_PORT};
+        rewrite ^ /recommendations break;
+        proxy_pass $recommender_upstream;
+    }
+
+    location ^~ /api/v1/recommendations/ {
+        set $recommender_upstream http://${RECOMMENDER_SERVICE_HOST}:${RECOMMENDER_SERVICE_PORT};
+        rewrite ^/api/v1/recommendations/(.*)$ /recommendations/$1 break;
+        proxy_pass $recommender_upstream;
     }
 
     # Điều hướng callback IPN VNPay về endpoint gốc của Django.

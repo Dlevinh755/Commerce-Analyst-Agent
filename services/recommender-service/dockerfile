@@ -13,4 +13,4 @@ COPY . .
 
 EXPOSE 8009
 
-CMD ["uvicorn", "src.recommend_products:app", "--host", "0.0.0.0", "--port", "8009"]
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8009"]

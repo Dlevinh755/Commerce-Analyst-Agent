@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import SearchBar from '../../components/common/SearchBar';
 import BookGrid from '../../components/common/BookGrid';
+import RecommendedBooks from '../../components/common/RecommendedBooks';
 import Toast from '../../components/common/Toast';
 import { bookService } from '../../services/bookService';
 import { normalizeBook } from '../../utils/bookMapper';
@@ -62,6 +63,9 @@ export default function HomePage() {
           </Link>
         </div>
       </div>
+
+      {/* Personalised recommendations — visible only for logged-in buyers */}
+      <RecommendedBooks onUnauthorized={setToast} onAddedToCart={setToast} />
 
       <div>
         <div className="mb-4 flex items-center justify-between">

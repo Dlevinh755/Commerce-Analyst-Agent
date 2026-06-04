@@ -11,6 +11,7 @@ import { bookService } from '../../services/bookService';
 import { recommenderService } from '../../services/recommenderService';
 import { sellerProductService } from '../../services/sellerProductService';
 import { normalizeBook } from '../../utils/bookMapper';
+import { resolveRecommendedBooks } from '../../utils/resolveRecommendedBook';
 
 const ITEMS_PER_PAGE = 6;
 
@@ -19,8 +20,9 @@ export default function BookListPage() {
   const searchFromUrl = searchParams.get('search') || '';
   const user = useAuth((state) => state.user);
   const userRole = String(user?.role || '').toLowerCase();
-  const username = user?.username || '';
-  const shouldShowRecommendations = Boolean(username && userRole !== 'seller' && userRole !== 'admin');
+  const shouldShowRecommendations = Boolean(
+    user?.user_id && userRole !== 'seller' && userRole !== 'admin'
+  );
 
   const [books, setBooks] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -62,55 +64,44 @@ export default function BookListPage() {
 
   useEffect(() => {
     async function fetchRecommended() {
+      if (!shouldShowRecommendations) {
+        setRecommended([]);
+        setRecommendLoading(false);
+        return;
+      }
+
+      const userId = user?.user_id;
+      if (!userId) {
+        setRecommended([]);
+        setRecommendLoading(false);
+        return;
+      }
+
+      setRecommendLoading(true);
+      console.log(`[Recommender] Đang tải gợi ý cho user: ${user?.username} (user_id=${userId})...`);
+
       try {
-        if (!shouldShowRecommendations) {
+        const { data } = await recommenderService.getByUserId(userId, 5);
+        console.log('[Recommender] Raw response từ recommender-service:', data);
+
+        const rawRecs = Array.isArray(data?.recommendations) ? data.recommendations : [];
+        console.log(`[Recommender] Nhận được ${rawRecs.length} gợi ý thô:`, rawRecs);
+
+        if (rawRecs.length === 0) {
+          console.warn('[Recommender] User chưa có embedding hoặc chưa có lịch sử mua.');
           setRecommended([]);
-          setRecommendLoading(false);
           return;
         }
 
-        setRecommendLoading(true);
-
-        const payload = {
-          username,
-          clicked_product_title: '',
-          clicked_seller_username: null,
-          clicked_category: null,
-          top_n: 5,
-        };
-        const { data } = await recommenderService.recommendByCF(payload);
-        const rawItems = Array.isArray(data?.recommendations) ? data.recommendations : [];
-        const baseItems = rawItems.slice(0, 5).map((entry) => {
-          if (Array.isArray(entry)) {
-            const [bookId] = entry;
-            return { product_id: bookId ?? null };
-          }
-
-          if (typeof entry === 'number') {
-            return { product_id: entry };
-          }
-
-          return { product_id: entry?.product_id ?? entry?.book_id ?? entry?.id ?? null };
-        });
-
-        const detailResponses = await Promise.all(
-          baseItems.map((entry) =>
-            entry.product_id
-              ? bookService
-                  .detail(entry.product_id)
-                  .then((response) => response.data)
-                  .catch(() => null)
-              : Promise.resolve(null)
-          )
+        const normalized = resolveRecommendedBooks(rawRecs, 5);
+        console.log(
+          `[Recommender] ✅ Chuẩn hóa xong ${normalized.length}/${rawRecs.length} sách gợi ý cho user "${user?.username}":`,
+          normalized
         );
 
-        const normalized = detailResponses
-          .filter(Boolean)
-          .map(normalizeBook)
-          .filter((book) => book.id !== undefined);
-
-        setRecommended(normalized.slice(0, 5));
-      } catch {
+        setRecommended(normalized);
+      } catch (err) {
+        console.warn('[Recommender] ❌ Lỗi khi tải gợi ý:', err?.response?.data ?? err?.message ?? err);
         setRecommended([]);
       } finally {
         setRecommendLoading(false);
@@ -118,7 +109,7 @@ export default function BookListPage() {
     }
 
     fetchRecommended();
-  }, [shouldShowRecommendations, username]);
+  }, [shouldShowRecommendations, user?.user_id]);
 
   const categoryMap = useMemo(() => {
     return new Map(categories.map((category) => [category.name, category.category_id]));
@@ -229,15 +220,23 @@ export default function BookListPage() {
         />
 
         <div>
-          {shouldShowRecommendations ? (
+          {shouldShowRecommendations && (recommendLoading || recommended.length > 0) ? (
             <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-slate-800">Gợi ý cho bạn</h2>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-lg">✨</span>
+                  <h2 className="text-xl font-semibold text-slate-800">Gợi ý cho bạn</h2>
+                </div>
               </div>
               {recommendLoading ? (
-                <div className="text-sm text-slate-600">Đang tải gợi ý...</div>
-              ) : recommended.length === 0 ? (
-                <div className="text-sm text-slate-600">Hiện chưa có gợi ý phù hợp.</div>
+                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-[540px] animate-pulse rounded-2xl border border-slate-200 bg-slate-100"
+                    />
+                  ))}
+                </div>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {recommended.map((book) => (

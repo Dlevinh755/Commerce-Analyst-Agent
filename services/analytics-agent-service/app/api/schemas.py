@@ -14,4 +14,5 @@ class QueryResponse(BaseModel):
     validated_sql: str | None = None
     final_answer: str | None = None
     query_result: dict | None = None
+    visualization: dict | None = None
     error: str | None = None

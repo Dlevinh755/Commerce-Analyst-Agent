@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useOrderStore from '../../store/orderStore';
@@ -122,7 +122,7 @@ export default function MyOrdersPage() {
   const ordersRaw = useOrderStore((state) => state.orders);
   const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
   const fetchOrders = useOrderStore((state) => state.fetchOrders);
-  const isLoading = useOrderStore((state) => state.isLoading);
+  const ordersLoading = useOrderStore((state) => state.ordersLoading);
   const error = useOrderStore((state) => state.error);
   const fetchProfile = useAuth((state) => state.fetchProfile);
   const [confirmingId, setConfirmingId] = useState(null);
@@ -130,12 +130,21 @@ export default function MyOrdersPage() {
   const [retryingId, setRetryingId] = useState(null);
   const [toast, setToast] = useState('');
   const [coverByBookId, setCoverByBookId] = useState({});
+  const loadedCoverIdsRef = useRef(new Set());
+  const ordersFetchedRef = useRef(false);
 
   useEffect(() => {
     if (!isHydrated || !isAuthenticated) {
+      ordersFetchedRef.current = false;
       return;
     }
-    fetchOrders().catch(() => {});
+    if (ordersFetchedRef.current) {
+      return;
+    }
+    ordersFetchedRef.current = true;
+    fetchOrders().catch(() => {
+      ordersFetchedRef.current = false;
+    });
   }, [fetchOrders, isHydrated, isAuthenticated]);
 
   useEffect(() => {
@@ -144,7 +153,9 @@ export default function MyOrdersPage() {
         .flatMap((order) => order.items || [])
         .filter((item) => !item?.cover && item?.book_id)
         .map((item) => Number(item.book_id))
-        .filter((bookId) => Number.isInteger(bookId) && bookId > 0 && !coverByBookId[bookId])
+        .filter(
+          (bookId) => Number.isInteger(bookId) && bookId > 0 && !loadedCoverIdsRef.current.has(bookId)
+        )
     )];
 
     if (!missingBookIds.length) {
@@ -152,6 +163,7 @@ export default function MyOrdersPage() {
     }
 
     let cancelled = false;
+    missingBookIds.forEach((bookId) => loadedCoverIdsRef.current.add(bookId));
 
     async function loadMissingCovers() {
       const results = await Promise.allSettled(
@@ -183,7 +195,7 @@ export default function MyOrdersPage() {
     return () => {
       cancelled = true;
     };
-  }, [orders, coverByBookId]);
+  }, [orders]);
 
   const onConfirmReceived = async (orderId) => {
     setConfirmingId(orderId);
@@ -253,20 +265,26 @@ export default function MyOrdersPage() {
 
   return (
     <section className="space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
-          <h1 className="text-3xl font-semibold text-slate-900">Đơn hàng của tôi</h1>
-          <Link to="/books" className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50">
+      <div className="rounded-2xl border-2 border-stone-200 bg-white p-4 shadow-sm md:p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b-2 border-stone-200 pb-4">
+          <div>
+            <h1 className="text-3xl font-extrabold text-ink">Đơn hàng của tôi</h1>
+            <p className="mt-1 text-sm font-semibold text-stone-600">Theo dõi trạng thái và thanh toán đơn của bạn</p>
+          </div>
+          <Link
+            to="/books"
+            className="rounded-lg border-2 border-stone-300 px-3 py-2 text-xs font-bold text-ink transition hover:bg-brand-50 hover:border-brand-200"
+          >
             Tiếp tục mua sắm
           </Link>
         </div>
 
-        {isLoading ? <div className="card">Đang tải đơn hàng...</div> : null}
+        {ordersLoading && !orders.length ? <div className="card">Đang tải đơn hàng...</div> : null}
         {error ? <div className="card text-red-600">{error}</div> : null}
 
-        {!isLoading && !orders.length ? (
+        {!ordersLoading && !orders.length ? (
           <div className="card text-center">
-            <p className="text-slate-600">Bạn chưa có đơn hàng nào.</p>
+            <p className="font-semibold text-stone-600">Bạn chưa có đơn hàng nào.</p>
             <Link to="/books" className="btn-primary mt-4 inline-block">
               Mua cuốn sách đầu tiên
             </Link>
@@ -282,7 +300,7 @@ export default function MyOrdersPage() {
             const remainingItems = Math.max(0, (order.items?.length || 0) - previewItems.length);
 
             return (
-              <div key={order.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 shadow-sm">
+              <div key={order.id} className="rounded-xl border-2 border-stone-200 bg-surface-warm/50 p-4 shadow-sm">
                 <div className="flex gap-3">
                   <div className="relative w-[7.75rem] flex-shrink-0">
                     <div className="grid grid-cols-3 gap-1">
@@ -297,7 +315,7 @@ export default function MyOrdersPage() {
                       : null}
                     </div>
                     {remainingItems > 0 ? (
-                      <span className="absolute -bottom-1 right-0 rounded bg-brand-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                      <span className="absolute -bottom-1 right-0 rounded bg-brand-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                         +{remainingItems} sản phẩm
                       </span>
                     ) : null}
@@ -306,8 +324,8 @@ export default function MyOrdersPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <p className="text-lg font-semibold text-slate-900">Đơn hàng #{order.id}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-lg font-extrabold text-ink">Đơn hàng #{order.id}</p>
+                        <p className="text-xs font-semibold text-stone-600">
                           {order.created_at ? new Date(order.created_at).toLocaleString() : '-'} • {order.items?.length || 0} sản phẩm
                         </p>
                       </div>
@@ -316,18 +334,20 @@ export default function MyOrdersPage() {
                       </span>
                     </div>
 
-                    <p className="mt-1 text-sm font-medium text-slate-700">Tổng tiền: {formatCurrency(total)}</p>
-                    <p className="text-sm text-slate-600">Phương thức thanh toán: {formatPaymentMethod(order.payment_method)}</p>
+                    <p className="mt-1 text-sm font-bold text-ink">Tổng tiền: {formatCurrency(total)}</p>
+                    <p className="text-sm font-semibold text-stone-600">
+                      Phương thức thanh toán: {formatPaymentMethod(order.payment_method)}
+                    </p>
 
                     {cancellationPending ? (
                       <p className="mt-1 text-xs font-medium text-amber-700">Yêu cầu hủy đang chờ người bán duyệt.</p>
                     ) : null}
 
                     {order.items?.length ? (
-                      <div className="mt-3 space-y-1 rounded-lg border border-slate-200 bg-white p-2">
+                      <div className="mt-3 space-y-1 rounded-lg border-2 border-stone-200 bg-white p-2">
                         {order.items.map((item) => (
                           <div key={`${order.id}-status-${item.order_item_id || item.id}`} className="flex items-center justify-between gap-3 text-xs">
-                            <span className="min-w-0 truncate text-slate-700">{item.title}</span>
+                            <span className="min-w-0 truncate font-semibold text-ink">{item.title}</span>
                             <LineItemStatusBadge status={item.status || order.status} />
                           </div>
                         ))}

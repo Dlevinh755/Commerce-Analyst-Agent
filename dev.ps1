@@ -34,8 +34,10 @@ function Invoke-DockerCompose {
 function Show-Help {
     Write-Host "Available commands:"
     Write-Host "  .\dev.ps1 up                         Start infra + app"
+    Write-Host "  .\dev.ps1 up-build                   Build images and start infra + app"
     Write-Host "  .\dev.ps1 up-tools                   Start infra + app + tools"
     Write-Host "  .\dev.ps1 down                       Stop infra + app + tools"
+    Write-Host "  .\dev.ps1 down-volumes               Stop infra + app + tools and remove volumes"
     Write-Host "  .\dev.ps1 ps                         Show container status"
     Write-Host "  .\dev.ps1 logs order_service         Follow logs for a service"
     Write-Host "  .\dev.ps1 restart gateway            Restart a service"
@@ -47,11 +49,17 @@ switch ($Command.ToLowerInvariant()) {
     "up" {
         Invoke-DockerCompose $AppComposeFiles @("up", "-d")
     }
+    "up-build" {
+        Invoke-DockerCompose $AppComposeFiles @("up", "--build", "-d")
+    }
     "up-tools" {
         Invoke-DockerCompose $AllComposeFiles @("up", "-d")
     }
     "down" {
         Invoke-DockerCompose $AllComposeFiles @("down")
+    }
+    "down-volumes" {
+        Invoke-DockerCompose $AllComposeFiles @("down", "-v")
     }
     "ps" {
         Invoke-DockerCompose $AllComposeFiles @("ps")

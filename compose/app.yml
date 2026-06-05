@@ -24,6 +24,8 @@ services:
       - PAYOUT_SERVICE_PORT=${PAYOUT_SERVICE_PORT:-8008}
       - REVIEW_SERVICE_HOST=review_service
       - REVIEW_SERVICE_PORT=${REVIEW_SERVICE_PORT:-8006}
+      - RECOMMENDER_SERVICE_HOST=${RECOMMENDER_SERVICE_HOST}
+      - RECOMMENDER_SERVICE_PORT=${RECOMMENDER_SERVICE_PORT}
       - VNPAY_SERVICE_HOST=vnpay_service
       - VNPAY_SERVICE_PORT=${VNPAY_SERVICE_PORT:-8005}
       - KAFKA_UI_HOST=${KAFKA_UI_HOST}
@@ -101,10 +103,12 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - DEV_AUTO_SEED=true
+      - DEV_SEED_FILE=/app/dev-seeds.json
     ports:
       - "${CART_SERVICE_PORT:-8002}:8002"
     volumes:
       - ..:/services/cart-service
+      - ../dev-seeds.json:/app/dev-seeds.json:ro
     depends_on:
       order_service:
         condition: service_started
@@ -158,10 +162,13 @@ services:
       - ../.env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+      - DEV_AUTO_SEED=true
+      - DEV_SEED_FILE=/app/dev-seeds.json
     ports:
       - "${PAYOUT_SERVICE_PORT:-8008}:8008"
     volumes:
       - ../services/payout-service:/app
+      - ../dev-seeds.json:/app/dev-seeds.json:ro
     depends_on:
       - postgres-db
 
@@ -185,6 +192,41 @@ services:
       - postgres-db
       - order_service
       - product-service
+
+  recommender-service:
+    build:
+      context: ../services/recommender-service
+      dockerfile: dockerfile
+    container_name: commerce-recommender-service
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      - RECOMMENDER_DATA_SOURCE=${RECOMMENDER_DATA_SOURCE:-databricks}
+      - QDRANT_URL=${QDRANT_URL}
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
+      - BOOK_COLLECTION=${BOOK_COLLECTION:-book_embeddings}
+      - USER_COLLECTION=${USER_COLLECTION:-user_embeddings}
+      - TOP_K=${TOP_K:-5}
+      - DATABRICKS_HOST=${DATABRICKS_HOST}
+      - DATABRICKS_HTTP_PATH=${DATABRICKS_HTTP_PATH}
+      - DATABRICKS_ACCESS_TOKEN=${DATABRICKS_TOKEN}
+      - DATABRICKS_CATALOG=${DATABRICKS_CATALOG_NAME}
+      - DATABRICKS_SCHEMA=${DATABRICKS_SCHEMA_NAME}
+      - DATABRICKS_PRODUCTS_SOURCE=${DATABRICKS_PRODUCTS_SOURCE:-dim_books}
+      - DATABRICKS_PRODUCTS_ID_COLUMN=${DATABRICKS_PRODUCTS_ID_COLUMN:-book_id}
+      - DATABRICKS_PRODUCTS_SQL=${DATABRICKS_PRODUCTS_SQL}
+      - PRODUCT_SERVICE_URL=http://product-service:8001
+    ports:
+      - "${RECOMMENDER_SERVICE_PORT:-8009}:8009"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8009/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      - postgres-db
 
   vnpay_service:
     build: ../services/vnpay-service
@@ -221,6 +263,10 @@ services:
       context: ../frontend
       dockerfile: dockerfile
     container_name: commerce-frontend
+    command:
+      - sh
+      - -c
+      - sed -i 's/\r$//' /app/scripts/dev-entrypoint.sh && exec sh /app/scripts/dev-entrypoint.sh
     ports:
       - "${FRONTEND_DOCKER_PORT:-5175}:5173"
     volumes:

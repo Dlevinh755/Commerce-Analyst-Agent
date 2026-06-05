@@ -41,7 +41,7 @@ const useAuthStore = create(
             isHydrated: true,
           });
           if (shouldLoadCart(data.user)) {
-            await useCartStore.getState().fetchCart();
+            useCartStore.getState().fetchCart().catch(() => {});
           } else {
             useCartStore.setState({ items: [], isLoading: false, error: '' });
           }
@@ -60,7 +60,7 @@ const useAuthStore = create(
         const { data } = await authService.me();
         set({ user: data, isAuthenticated: true });
         if (shouldLoadCart(data)) {
-          await useCartStore.getState().fetchCart();
+          useCartStore.getState().fetchCart().catch(() => {});
         } else {
           useCartStore.setState({ items: [], isLoading: false, error: '' });
         }

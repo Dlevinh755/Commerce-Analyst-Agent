@@ -37,15 +37,22 @@ class SchemaIndex:
                 selected[fact] = tables[fact]
 
         dim_text = " ".join(dimensions).lower()
-        if "seller" in dim_text or "buyer" in dim_text or "user" in dim_text:
+        
+        # Match user dimension tables
+        user_keywords = ["seller", "buyer", "user", "customer", "người bán", "người mua", "khách hàng", "thành viên", "người dùng"]
+        if any(kw in dim_text for kw in user_keywords):
             if "dim_users" in tables:
                 selected["dim_users"] = tables["dim_users"]
 
-        if "book" in dim_text or "category" in dim_text or "author" in dim_text:
+        # Match book/product dimension tables
+        book_keywords = ["book", "category", "author", "product", "title", "sách", "thể loại", "danh mục", "tác giả", "sản phẩm", "tên", "truyện", "tiêu đề"]
+        if any(kw in dim_text for kw in book_keywords):
             if "dim_books" in tables:
                 selected["dim_books"] = tables["dim_books"]
 
-        if any(x in dim_text for x in ["date", "month", "year", "day", "quarter", "week"]):
+        # Match date dimension tables
+        date_keywords = ["date", "month", "year", "day", "quarter", "week", "time", "ngày", "tháng", "năm", "quý", "tuần", "thời gian", "thời điểm"]
+        if any(kw in dim_text for kw in date_keywords):
             if "dim_date" in tables:
                 selected["dim_date"] = tables["dim_date"]
 

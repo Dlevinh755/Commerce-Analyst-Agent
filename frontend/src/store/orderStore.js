@@ -95,24 +95,28 @@ const useOrderStore = create(
       orders: [],
       payments: [],
       isLoading: false,
+      ordersLoading: false,
+      paymentsLoading: false,
       error: '',
 
       clearError: () => set({ error: '' }),
 
-      fetchOrders: async () => {
-        set({ isLoading: true, error: '' });
+      fetchOrders: async ({ silent = false } = {}) => {
+        if (!silent) {
+          set({ isLoading: true, ordersLoading: true, error: '' });
+        } else {
+          set({ ordersLoading: true, error: '' });
+        }
         try {
           const { data } = await orderService.list();
           const items = Array.isArray(data) ? data : data?.items || [];
           const normalized = items.map(normalizeOrder);
-          if (normalized.length) {
-            set({ orders: normalized });
-          }
+          set({ orders: normalized });
           return normalized;
         } catch {
           return get().orders;
         } finally {
-          set({ isLoading: false });
+          set({ isLoading: false, ordersLoading: false });
         }
       },
 
@@ -128,8 +132,12 @@ const useOrderStore = create(
         }
       },
 
-      fetchPayments: async () => {
-        set({ isLoading: true, error: '' });
+      fetchPayments: async ({ silent = false } = {}) => {
+        if (!silent) {
+          set({ isLoading: true, paymentsLoading: true, error: '' });
+        } else {
+          set({ paymentsLoading: true, error: '' });
+        }
         try {
           const { data } = await paymentService.listMyPayments();
           const items = Array.isArray(data) ? data : data?.items || [];
@@ -139,7 +147,7 @@ const useOrderStore = create(
         } catch {
           return get().payments;
         } finally {
-          set({ isLoading: false });
+          set({ isLoading: false, paymentsLoading: false });
         }
       },
 

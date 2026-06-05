@@ -31,6 +31,10 @@ tables:
         type: double
         description: Giá niêm yết hiện tại
 
+      - name: image_url
+        type: string
+        description: Link ảnh bìa sách
+
       - name: category_name
         type: string
         description: Tên thể loại sách
@@ -259,16 +263,19 @@ business_metrics:
   - name: orders
     formula: COUNT(DISTINCT order_id)
     source_table: fact_sales
+    default_filter: order_overall_status = 'delivered'
     description: Tổng số đơn hàng
 
   - name: items_sold
     formula: SUM(quantity)
     source_table: fact_sales
+    default_filter: order_overall_status = 'delivered'
     description: Tổng số lượng sách bán ra
 
   - name: avg_order_value
     formula: SUM(line_total) / COUNT(DISTINCT order_id)
     source_table: fact_sales
+    default_filter: order_overall_status = 'delivered'
     description: Giá trị đơn trung bình
 
   - name: cart_quantity

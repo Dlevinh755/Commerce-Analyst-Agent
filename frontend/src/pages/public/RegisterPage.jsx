@@ -28,8 +28,8 @@ export default function RegisterPage() {
 
   return (
     <section className="mx-auto max-w-lg card">
-      <h1 className="text-3xl font-semibold">Tạo tài khoản của bạn</h1>
-      <p className="mt-2 text-slate-600">Tham gia ngay để lưu giỏ hàng, thanh toán và quản lý đơn hàng.</p>
+      <h1 className="text-3xl font-extrabold text-ink">Tạo tài khoản của bạn</h1>
+      <p className="mt-2 font-semibold text-stone-600">Tham gia ngay để lưu giỏ hàng, thanh toán và quản lý đơn hàng.</p>
 
       <form className="mt-6 grid gap-3 sm:grid-cols-2" onSubmit={onSubmit}>
         <input
@@ -54,7 +54,7 @@ export default function RegisterPage() {
           placeholder="Mật khẩu"
           onChange={(e) => setForm({ ...form, password: e.target.value })}
         />
-        <label className="sm:col-span-2 text-sm text-slate-600" htmlFor="role">
+        <label className="sm:col-span-2 text-sm font-semibold text-stone-600" htmlFor="role">
           Loại tài khoản
         </label>
         <select
@@ -72,9 +72,9 @@ export default function RegisterPage() {
         </button>
       </form>
 
-      <p className="mt-4 text-sm text-slate-600">
+      <p className="mt-4 text-sm font-semibold text-stone-600">
         Đã có tài khoản?{' '}
-        <Link to="/login" className="font-medium text-brand-700">
+        <Link to="/login" className="font-bold text-brand-700">
           Đăng nhập
         </Link>
       </p>

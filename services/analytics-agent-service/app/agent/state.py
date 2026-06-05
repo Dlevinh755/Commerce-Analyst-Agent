@@ -81,6 +81,26 @@ class QueryResult(BaseModel):
     execution_ms: Optional[int] = None
 
 
+class VisualizationSeries(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    key: str
+    label: str
+
+
+class VisualizationSpec(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    kind: Literal["line", "bar", "pie"]
+    title: str
+    description: str | None = None
+    x_key: str
+    series: list[VisualizationSeries] = Field(default_factory=list)
+    dataset: list[dict[str, Any]] = Field(default_factory=list)
+    x_label: str | None = None
+    y_label: str | None = None
+    truncated: bool = False
+    reason: str | None = None
+
+
 
 class ConversationMemory(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -113,6 +133,7 @@ class AgentState(BaseModel):
     validated_sql: Optional[str] = None
 
     query_result: Optional[QueryResult] = None
+    visualization: Optional[VisualizationSpec] = None
     final_answer: Optional[str] = None
 
     execution_error: str | None = None

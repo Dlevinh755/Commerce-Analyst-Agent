@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+
 from langgraph.config import get_stream_writer
 
 from app.agent.state import AgentState, SqlDraft
 from app.common.logging import get_logger
 from app.llm.gemini_client import GeminiClient
 from app.llm.model_router import ModelRouter
+from app.metadata.loader import load_catalog
 
 logger = get_logger(__name__)
 
@@ -18,11 +20,31 @@ def _safe_stream_writer():
         return lambda _event: None
 
 
+def _format_query_rules(catalog: dict) -> str:
+    query_rules = catalog.get("query_rules", {})
+    if not query_rules:
+        return "- Không có query_rules nào trong catalog."
+    return json.dumps(query_rules, ensure_ascii=False, indent=2)
+
+
+def _format_date_handling(catalog: dict, relevant_schema: dict[str, dict]) -> str:
+    date_handling = catalog.get("date_handling", {})
+    relevant_facts = [table_name for table_name in relevant_schema if table_name in date_handling]
+    scoped_rules = {table_name: date_handling[table_name] for table_name in relevant_facts}
+    if not scoped_rules:
+        return "- Không có date_handling rule áp dụng cho relevant_schema."
+    return json.dumps(scoped_rules, ensure_ascii=False, indent=2)
+
+
 def _build_prompt(state: AgentState) -> str:
     if state.analysis_plan is None:
         raise ValueError("analysis_plan is required")
     if not state.relevant_schema:
         raise ValueError("relevant_schema is required")
+
+    catalog = load_catalog()
+    query_rules_text = _format_query_rules(catalog)
+    date_rules_text = _format_date_handling(catalog, state.relevant_schema)
 
     return f"""
 Bạn là chuyên gia viết Databricks SQL.
@@ -33,20 +55,23 @@ Nhiệm vụ:
 - Chỉ dùng bảng/cột có trong relevant_schema.
 - Chỉ viết SELECT hoặc WITH ... SELECT.
 - Không dùng INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, MERGE.
-- Nếu query không aggregate hoặc có limit trong plan, áp dụng LIMIT.
+- Phải bám sát metrics, joins, filters, group_by, order_by và limit có trong AnalysisPlan.
 - Trả về JSON đúng schema SqlDraft.
 
-Databricks SQL rules:
-- DATE(col) để lấy ngày.
-- DATE_TRUNC('month', col) để gom theo tháng.
-- CURRENT_DATE() cho ngày hiện tại.
-- INTERVAL 30 DAYS cho khoảng thời gian.
-- Alias cột nên rõ ràng, dễ đọc.
-- Nếu cột thời gian trong schema/runtime là BIGINT epoch, phải convert trước khi dùng hàm thời gian hoặc filter thời gian:
-  CAST(FROM_UNIXTIME(CASE WHEN ABS(CAST(col AS BIGINT)) >= 1000000000000 THEN CAST(CAST(col AS BIGINT) / 1000 AS BIGINT) ELSE CAST(col AS BIGINT) END) AS TIMESTAMP)
-- Không được gọi DATE_TRUNC/DATE/YEAR/... trực tiếp lên cột BIGINT.
-- Không được viết CAST(col AS DATE) hoặc CAST(col AS TIMESTAMP) trực tiếp nếu col là BIGINT epoch.
-- Nếu cần lấy ngày từ BIGINT epoch, dùng DATE(CAST(FROM_UNIXTIME(... ) AS TIMESTAMP)).
+Query rules từ catalog.yaml:
+{query_rules_text}
+
+Date handling từ catalog.yaml cho các bảng liên quan:
+{date_rules_text}
+
+SQL generation rules:
+- Ưu tiên dùng expression đã có sẵn trong AnalysisPlan.metrics, AnalysisPlan.group_by, AnalysisPlan.order_by và AnalysisPlan.filters thay vì tự phát minh expression mới.
+- Nếu catalog có date_handling cho fact table đang dùng, phải bám theo expression trong catalog.
+- Không được dùng DATE/YEAR/DATE_TRUNC trực tiếp lên cột BIGINT epoch nếu catalog yêu cầu convert trước.
+- Không được dùng CAST(col AS DATE) hoặc CAST(col AS TIMESTAMP) trực tiếp cho cột BIGINT epoch nếu catalog không cho phép.
+- Nếu plan.limit có giá trị thì phải áp dụng LIMIT đúng bằng giá trị đó.
+- Nếu query không aggregate và plan.limit là null, áp dụng LIMIT theo query_rules.always_limit_non_aggregate nếu có.
+- Alias cột nên rõ ràng, dễ đọc và khớp semantics của AnalysisPlan.
 
 Question:
 {state.question}

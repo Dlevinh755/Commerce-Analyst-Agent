@@ -52,6 +52,8 @@ services:
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.cart          --partitions 1 --replication-factor 1;
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.payout_requests --partitions 1 --replication-factor 1;
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.reviews       --partitions 1 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.order_items   --partitions 1 --replication-factor 1;
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic commerce.public.seller_orders --partitions 1 --replication-factor 1;
         echo '=> Topics created.';
       "
     restart: on-failure
@@ -225,12 +227,16 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+      - DEV_AUTO_SEED=true
+      - DEV_SEED_FILE=/app/dev-seeds.json
     ports:
       - "${CART_SERVICE_PORT:-8002}:8002"
     volumes:
       - .:/services/cart-service
+      - ./dev-seeds.json:/app/dev-seeds.json:ro
     depends_on:
-      - postgres-db
+      postgres-db:
+        condition: service_healthy
     networks:
       - default
       - commerce-network
@@ -270,12 +276,16 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+      - DEV_AUTO_SEED=true
     ports:
       - "${PAYMENT_SERVICE_PORT:-8004}:8004"
     volumes:
       - ./services/payment-service:/app
     depends_on:
-      - postgres-db
+      postgres-db:
+        condition: service_healthy
+      order_service:
+        condition: service_healthy
 
   payout_service:
     build: ./services/payout-service
@@ -285,12 +295,18 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+      - DEV_AUTO_SEED=true
+      - DEV_SEED_FILE=/app/dev-seeds.json
     ports:
       - "${PAYOUT_SERVICE_PORT:-8008}:8008"
     volumes:
       - ./services/payout-service:/app
+      - ./dev-seeds.json:/app/dev-seeds.json:ro
     depends_on:
-      - postgres-db
+      postgres-db:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
 
   review_service:
     build: ./services/review-service
@@ -325,7 +341,7 @@ services:
     env_file:
       - .env
     environment:
-      - RECOMMENDER_DATA_SOURCE=${RECOMMENDER_DATA_SOURCE:-databricks}
+      - RECOMMENDER_DATA_SOURCE=${RECOMMENDER_DATA_SOURCE:-auto}
       - DATABRICKS_HOST=${DATABRICKS_HOST}
       - DATABRICKS_HTTP_PATH=${DATABRICKS_HTTP_PATH}
       - DATABRICKS_ACCESS_TOKEN=${DATABRICKS_TOKEN}
@@ -343,7 +359,8 @@ services:
     volumes:
       - ./dev-seeds.json:/app/dev-seeds.json:ro
     depends_on:
-      - postgres-db
+      postgres-db:
+        condition: service_healthy
 
   vnpay_service:
     build: ./services/vnpay-service
@@ -360,7 +377,8 @@ services:
     volumes:
       - ./services/vnpay-service:/app
     depends_on:
-      - postgres-db
+      postgres-db:
+        condition: service_healthy
 
   analytics-agent:
     build: ./services/analytics-agent-service

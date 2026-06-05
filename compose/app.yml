@@ -103,10 +103,12 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
       - DEV_AUTO_SEED=true
+      - DEV_SEED_FILE=/app/dev-seeds.json
     ports:
       - "${CART_SERVICE_PORT:-8002}:8002"
     volumes:
       - ..:/services/cart-service
+      - ../dev-seeds.json:/app/dev-seeds.json:ro
     depends_on:
       order_service:
         condition: service_started
@@ -160,10 +162,13 @@ services:
       - ../.env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${POSTGRES_DB}
+      - DEV_AUTO_SEED=true
+      - DEV_SEED_FILE=/app/dev-seeds.json
     ports:
       - "${PAYOUT_SERVICE_PORT:-8008}:8008"
     volumes:
       - ../services/payout-service:/app
+      - ../dev-seeds.json:/app/dev-seeds.json:ro
     depends_on:
       - postgres-db
 

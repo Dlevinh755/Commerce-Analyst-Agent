@@ -31,6 +31,10 @@ tables:
         type: double
         description: Giá niêm yết hiện tại
 
+      - name: image_url
+        type: string
+        description: Link ảnh bìa sách
+
       - name: category_name
         type: string
         description: Tên thể loại sách

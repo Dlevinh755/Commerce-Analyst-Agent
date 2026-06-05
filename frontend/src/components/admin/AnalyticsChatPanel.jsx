@@ -1,8 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { buildAnalyticsStreamUrl } from '../../services/analyticsService';
+import MarkdownMessage from '../common/MarkdownMessage';
+import AnalyticsVisualization from './AnalyticsVisualization';
 
 function createSessionId() {
   return `admin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createWelcomeMessage() {
+  return {
+    id: 'welcome',
+    role: 'assistant',
+    status: 'completed',
+    content: 'Ask a business question to stream analysis progress from the analytics agent.',
+    events: [],
+  };
 }
 
 function formatPayload(payload) {
@@ -17,15 +29,7 @@ export default function AnalyticsChatPanel() {
   const eventSourceRef = useRef(null);
   const [sessionId, setSessionId] = useState(() => createSessionId());
   const [question, setQuestion] = useState('');
-  const [messages, setMessages] = useState([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      status: 'completed',
-      content: 'Ask a business question to stream analysis progress from the analytics agent.',
-      events: [],
-    },
-  ]);
+  const [messages, setMessages] = useState(() => [createWelcomeMessage()]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [statusText, setStatusText] = useState('Idle');
 
@@ -94,8 +98,6 @@ export default function AnalyticsChatPanel() {
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion || isStreaming) return;
 
-    const nextSessionId = createSessionId();
-    setSessionId(nextSessionId);
     setMessages((prev) => [
       ...prev,
       {
@@ -118,7 +120,7 @@ export default function AnalyticsChatPanel() {
     closeStream();
     const source = new EventSource(
       buildAnalyticsStreamUrl({
-        sessionId: nextSessionId,
+        sessionId,
         question: trimmedQuestion,
       })
     );
@@ -200,6 +202,23 @@ export default function AnalyticsChatPanel() {
     );
   };
 
+  const startNewChat = () => {
+    closeStream();
+    setIsStreaming(false);
+    setStatusText('Idle');
+    setSessionId(createSessionId());
+    setQuestion('');
+    setMessages([createWelcomeMessage()]);
+  };
+
+  const renderMessageContent = (message) => {
+    if (message.role === 'user') {
+      return <p className="whitespace-pre-wrap leading-6">{message.content}</p>;
+    }
+
+    return <MarkdownMessage content={message.content} className="text-sm text-slate-800" />;
+  };
+
   return (
     <article className="card overflow-hidden">
       <div className="flex flex-col gap-4 border-b border-slate-200 pb-4 lg:flex-row lg:items-end lg:justify-between">
@@ -208,9 +227,19 @@ export default function AnalyticsChatPanel() {
           <p className="mt-1 text-sm text-slate-600">
             Stream live reasoning steps from the analytics agent through the admin gateway.
           </p>
+          <p className="mt-1 text-xs text-slate-500">Status: {statusText}</p>
         </div>
-        <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-          Session: {sessionId}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+            Session: {sessionId}
+          </div>
+          <button
+            type="button"
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700"
+            onClick={startNewChat}
+          >
+            New chat
+          </button>
         </div>
       </div>
 
@@ -232,11 +261,17 @@ export default function AnalyticsChatPanel() {
                   <span>{message.role === 'user' ? 'Admin' : 'Analytics Agent'}</span>
                   <span>{message.status}</span>
                 </div>
-                <p className="whitespace-pre-wrap leading-6">{message.content}</p>
+                {renderMessageContent(message)}
+                {message.meta?.visualization ? <AnalyticsVisualization spec={message.meta.visualization} /> : null}
                 {message.meta?.validated_sql ? (
-                  <pre className="mt-3 overflow-x-auto rounded-xl bg-slate-950/90 p-3 text-xs text-slate-100">
-                    {message.meta.validated_sql}
-                  </pre>
+                  <details className="mt-3 rounded-xl border border-slate-200 bg-slate-50">
+                    <summary className="cursor-pointer list-none px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      Validated SQL
+                    </summary>
+                    <pre className="overflow-x-auto border-t border-slate-200 bg-slate-950/90 p-3 text-xs text-slate-100">
+                      {message.meta.validated_sql}
+                    </pre>
+                  </details>
                 ) : null}
               </div>
             ))}

@@ -31,8 +31,10 @@ Nhiệm vụ:
 - Dựa trên câu hỏi người dùng, SQL đã chạy và preview kết quả.
 - Nếu dữ liệu ít hoặc rỗng thì nói rõ.
 - Không bịa thêm dữ liệu không có trong preview.
-- Có thể nêu 2-4 insight ngắn nếu nhìn thấy xu hướng rõ ràng.
-- Kết thúc bằng 1 gợi ý follow-up phù hợp.
+- Nếu nhìn thấy xu hướng rõ ràng, có thể nêu 2-4 insight ngắn.
+- Preview kết quả chỉ là dữ liệu mẫu agent đang gửi vào prompt; không được khẳng định các kết luận vượt quá những gì preview thể hiện.
+- Nếu row_count lớn hơn số rows trong preview, nói theo hướng thận trọng và tránh khẳng định toàn bộ phân phối dữ liệu.
+- Có thể gợi ý 1 follow-up phù hợp ở cuối, nhưng không bắt buộc.
 
 User question:
 {state.question}

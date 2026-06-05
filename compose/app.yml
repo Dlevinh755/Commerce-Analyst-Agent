@@ -263,6 +263,10 @@ services:
       context: ../frontend
       dockerfile: dockerfile
     container_name: commerce-frontend
+    command:
+      - sh
+      - -c
+      - sed -i 's/\r$//' /app/scripts/dev-entrypoint.sh && exec sh /app/scripts/dev-entrypoint.sh
     ports:
       - "${FRONTEND_DOCKER_PORT:-5175}:5173"
     volumes:

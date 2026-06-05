@@ -6,6 +6,7 @@ from app.agent.state import AgentState, ParsedIntent
 from app.common.logging import get_logger
 from app.llm.gemini_client import GeminiClient
 from app.llm.model_router import ModelRouter
+from app.metadata.loader import get_business_metrics, get_fact_like_table_names
 
 logger = get_logger(__name__)
 
@@ -17,12 +18,33 @@ def _safe_stream_writer():
         return lambda _event: None
 
 
+def _format_metric_hints() -> str:
+    lines: list[str] = []
+    for metric in get_business_metrics():
+        default_filter = metric.get("default_filter")
+        filter_text = f", default_filter={default_filter}" if default_filter else ""
+        lines.append(
+            f"- {metric['name']}: formula={metric['formula']}, "
+            f"source_table={metric['source_table']}{filter_text}"
+        )
+    return "\n".join(lines) if lines else "- Không có metric nào được định nghĩa trong catalog."
+
+
+def _format_source_hints() -> str:
+    fact_tables = get_fact_like_table_names()
+    if not fact_tables:
+        return "- Không có source_hint nào được định nghĩa trong catalog."
+    return "\n".join(f"- {table_name}" for table_name in fact_tables)
+
+
 def _build_prompt(state: AgentState) -> str:
     history_text = "\n".join(
         f"{m.role}: {m.content}" for m in state.chat_history[-8:]
     )
 
     memory = state.memory.model_dump()
+    metric_hints = _format_metric_hints()
+    source_hints = _format_source_hints()
     return f"""
 Bạn là bộ phân tích intent cho AI Data Query Agent.
 
@@ -42,17 +64,16 @@ Nguyên tắc merge context:
 6. Nếu user nói "top 10 thôi", giữ intent cũ và thêm ranking.
 7. Nếu user hỏi đầy đủ độc lập, đặt is_followup = false.
 
-Các metric hợp lệ:
-- revenue
-- orders
-- items_sold
-- avg_order_value
-- cart_quantity
+Các business metric hợp lệ từ catalog.yaml:
+{metric_hints}
 
-Một số source_hint hợp lệ:
-- fact_sales
-- fact_cart
-- fact_reviews
+Các source_hint hợp lệ từ catalog.yaml:
+{source_hints}
+
+Quy tắc output:
+- Nếu user đang nhắc đến một metric nghiệp vụ đã có trong catalog, field metric phải dùng đúng name trong catalog.
+- Nếu user chỉ nhắc đến domain dữ liệu như đơn hàng, giỏ hàng, review mà chưa nói rõ metric, có thể để metric = null và dùng source_hint phù hợp.
+- Không tự tạo metric name mới ngoài catalog.
 
 Previous structured memory:
 {memory}

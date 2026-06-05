@@ -1,0 +1,326 @@
+<svg width="1600" height="1100" viewBox="0 0 1600 1100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Analytics Agent Workflow Graph</title>
+  <desc id="desc">Clean graph layout for analytics agent workflow with main flow, success branch, error repair loop, response, state, and streaming events.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="1100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#EEF2FF"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0F172A" flood-opacity="0.10"/>
+    </filter>
+
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#334155"/>
+    </marker>
+
+    <style>
+      text {
+        font-family: "Inter", "Segoe UI", Arial, sans-serif;
+      }
+
+      .pageTitle {
+        font-size: 32px;
+        font-weight: 800;
+        fill: #0F172A;
+      }
+
+      .pageSub {
+        font-size: 17px;
+        font-weight: 500;
+        fill: #475569;
+      }
+
+      .sectionLabel {
+        font-size: 13px;
+        font-weight: 800;
+        fill: #64748B;
+        letter-spacing: 0.1em;
+      }
+
+      .nodeLabel {
+        font-size: 12px;
+        font-weight: 800;
+        fill: #64748B;
+        letter-spacing: 0.08em;
+      }
+
+      .nodeTitle {
+        font-size: 20px;
+        font-weight: 800;
+        fill: #0F172A;
+      }
+
+      .nodeBody {
+        font-size: 14px;
+        font-weight: 500;
+        fill: #475569;
+      }
+
+      .smallText {
+        font-size: 13px;
+        font-weight: 600;
+        fill: #475569;
+      }
+
+      .arrowLabel {
+        font-size: 12px;
+        font-weight: 800;
+        fill: #64748B;
+        letter-spacing: 0.06em;
+      }
+
+      .canvas {
+        fill: #FFFFFF;
+        stroke: #CBD5E1;
+        stroke-width: 2;
+        filter: url(#shadow);
+      }
+
+      .groupBox {
+        fill: #F8FAFC;
+        stroke: #E2E8F0;
+        stroke-width: 2;
+      }
+
+      .node {
+        fill: #FFFFFF;
+        stroke-width: 2;
+        filter: url(#shadow);
+      }
+
+      .blue { stroke: #93C5FD; }
+      .purple { stroke: #C4B5FD; }
+      .green { stroke: #86EFAC; }
+      .yellow { stroke: #FBBF24; }
+      .gray { stroke: #CBD5E1; }
+
+      .blueFill { fill: #DBEAFE; }
+      .purpleFill { fill: #EDE9FE; }
+      .greenFill { fill: #DCFCE7; }
+      .yellowFill { fill: #FEF3C7; }
+      .grayFill { fill: #F1F5F9; }
+
+      .line {
+        stroke: #334155;
+        stroke-width: 3;
+        fill: none;
+        marker-end: url(#arrow);
+      }
+
+      .softLine {
+        stroke: #94A3B8;
+        stroke-width: 3;
+        fill: none;
+        marker-end: url(#arrow);
+      }
+
+      .dashLine {
+        stroke: #94A3B8;
+        stroke-width: 3;
+        stroke-dasharray: 8 8;
+        fill: none;
+        marker-end: url(#arrow);
+      }
+
+      .iconText {
+        font-size: 16px;
+        font-weight: 800;
+        fill: #0F172A;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1100" rx="28" fill="url(#bg)"/>
+
+  <!-- Header -->
+  <text x="70" y="76" class="pageTitle">Analytics Agent Workflow - Graph View</text>
+  <text x="70" y="108" class="pageSub">
+    Clean directed graph layout: main flow, success branch, repair loop, response generation, memory, state, and streaming events.
+  </text>
+
+  <!-- Main canvas -->
+  <rect x="54" y="140" width="1492" height="900" rx="30" class="canvas"/>
+
+  <!-- Background groups -->
+  <rect x="120" y="180" width="520" height="720" rx="26" class="groupBox"/>
+  <text x="150" y="218" class="sectionLabel">MAIN REASONING FLOW</text>
+
+  <rect x="720" y="180" width="360" height="720" rx="26" class="groupBox"/>
+  <text x="750" y="218" class="sectionLabel">SQL EXECUTION FLOW</text>
+
+  <rect x="1160" y="180" width="300" height="720" rx="26" class="groupBox"/>
+  <text x="1190" y="218" class="sectionLabel">OUTPUT + MEMORY</text>
+
+  <!-- Node: User Question -->
+  <g>
+    <rect x="250" y="250" width="260" height="92" rx="22" class="node blue"/>
+    <circle cx="292" cy="296" r="22" class="blueFill"/>
+    <text x="292" y="296" class="iconText">Q</text>
+    <text x="330" y="282" class="nodeLabel">INPUT</text>
+    <text x="330" y="310" class="nodeTitle">User Question</text>
+    <text x="330" y="332" class="nodeBody">session_id + business query</text>
+  </g>
+
+  <!-- Node: parse_intent -->
+  <g>
+    <rect x="250" y="390" width="260" height="92" rx="22" class="node blue"/>
+    <circle cx="292" cy="436" r="22" class="blueFill"/>
+    <text x="292" y="436" class="iconText">1</text>
+    <text x="330" y="422" class="nodeLabel">NODE 1</text>
+    <text x="330" y="450" class="nodeTitle">parse_intent</text>
+    <text x="330" y="472" class="nodeBody">Metric, filters, dimensions</text>
+  </g>
+
+  <!-- Node: retrieve_schema -->
+  <g>
+    <rect x="250" y="530" width="260" height="92" rx="22" class="node blue"/>
+    <circle cx="292" cy="576" r="22" class="blueFill"/>
+    <text x="292" y="576" class="iconText">2</text>
+    <text x="330" y="562" class="nodeLabel">NODE 2</text>
+    <text x="330" y="590" class="nodeTitle">retrieve_schema</text>
+    <text x="330" y="612" class="nodeBody">Relevant tables + metadata</text>
+  </g>
+
+  <!-- Node: build_analysis_plan -->
+  <g>
+    <rect x="250" y="670" width="260" height="92" rx="22" class="node blue"/>
+    <circle cx="292" cy="716" r="22" class="blueFill"/>
+    <text x="292" y="716" class="iconText">3</text>
+    <text x="330" y="702" class="nodeLabel">NODE 3</text>
+    <text x="330" y="730" class="nodeTitle">build_plan</text>
+    <text x="330" y="752" class="nodeBody">Joins, metrics, grouping</text>
+  </g>
+
+  <!-- Node: generate_sql -->
+  <g>
+    <rect x="770" y="250" width="260" height="92" rx="22" class="node purple"/>
+    <circle cx="812" cy="296" r="22" class="purpleFill"/>
+    <text x="812" y="296" class="iconText">4</text>
+    <text x="850" y="282" class="nodeLabel">NODE 4</text>
+    <text x="850" y="310" class="nodeTitle">generate_sql</text>
+    <text x="850" y="332" class="nodeBody">Create Databricks SQL</text>
+  </g>
+
+  <!-- Node: validate_sql -->
+  <g>
+    <rect x="770" y="390" width="260" height="92" rx="22" class="node purple"/>
+    <circle cx="812" cy="436" r="22" class="purpleFill"/>
+    <text x="812" y="436" class="iconText">5</text>
+    <text x="850" y="422" class="nodeLabel">NODE 5</text>
+    <text x="850" y="450" class="nodeTitle">validate_sql</text>
+    <text x="850" y="472" class="nodeBody">Read-only + safety checks</text>
+  </g>
+
+  <!-- Node: execute_sql -->
+  <g>
+    <rect x="770" y="530" width="260" height="92" rx="22" class="node purple"/>
+    <circle cx="812" cy="576" r="22" class="purpleFill"/>
+    <text x="812" y="576" class="iconText">6</text>
+    <text x="850" y="562" class="nodeLabel">NODE 6</text>
+    <text x="850" y="590" class="nodeTitle">execute_sql</text>
+    <text x="850" y="612" class="nodeBody">Run SQL + collect rows</text>
+  </g>
+
+  <!-- Node: repair_sql -->
+  <g>
+    <rect x="770" y="720" width="260" height="92" rx="22" fill="#FFFBEB" stroke="#FBBF24" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="812" cy="766" r="22" class="yellowFill"/>
+    <text x="812" y="766" class="iconText">7</text>
+    <text x="850" y="752" class="nodeLabel">ERROR NODE</text>
+    <text x="850" y="780" class="nodeTitle">repair_sql</text>
+    <text x="850" y="802" class="nodeBody">Fix SQL using error details</text>
+  </g>
+
+  <!-- Node: build_visualization -->
+  <g>
+    <rect x="1185" y="250" width="250" height="92" rx="22" class="node green"/>
+    <circle cx="1227" cy="296" r="22" class="greenFill"/>
+    <text x="1227" y="296" class="iconText">8</text>
+    <text x="1265" y="282" class="nodeLabel">NODE 8</text>
+    <text x="1265" y="310" class="nodeTitle">visualization</text>
+    <text x="1265" y="332" class="nodeBody">Chart spec for frontend</text>
+  </g>
+
+  <!-- Node: analyze_result -->
+  <g>
+    <rect x="1185" y="390" width="250" height="92" rx="22" class="node green"/>
+    <circle cx="1227" cy="436" r="22" class="greenFill"/>
+    <text x="1227" y="436" class="iconText">9</text>
+    <text x="1265" y="422" class="nodeLabel">NODE 9</text>
+    <text x="1265" y="450" class="nodeTitle">analyze_result</text>
+    <text x="1265" y="472" class="nodeBody">Insights + final summary</text>
+  </g>
+
+  <!-- Node: update_memory -->
+  <g>
+    <rect x="1185" y="530" width="250" height="92" rx="22" class="node green"/>
+    <circle cx="1227" cy="576" r="22" class="greenFill"/>
+    <text x="1227" y="576" class="iconText">10</text>
+    <text x="1265" y="562" class="nodeLabel">NODE 10</text>
+    <text x="1265" y="590" class="nodeTitle">update_memory</text>
+    <text x="1265" y="612" class="nodeBody">Persist session context</text>
+  </g>
+
+  <!-- Output -->
+  <g>
+    <rect x="1185" y="720" width="250" height="92" rx="22" class="node blue"/>
+    <circle cx="1227" cy="766" r="22" class="blueFill"/>
+    <text x="1227" y="766" class="iconText">R</text>
+    <text x="1265" y="752" class="nodeLabel">OUTPUT</text>
+    <text x="1265" y="780" class="nodeTitle">API Response</text>
+    <text x="1265" y="802" class="nodeBody">answer, SQL, data, chart</text>
+  </g>
+
+  <!-- Main vertical arrows -->
+  <path d="M380 342V390" class="line"/>
+  <path d="M380 482V530" class="line"/>
+  <path d="M380 622V670" class="line"/>
+
+  <!-- Cross from planning to SQL -->
+  <path d="M510 716H670V296H770" class="line"/>
+  <text x="585" y="695" class="arrowLabel">PLAN READY</text>
+
+  <!-- SQL vertical arrows -->
+  <path d="M900 342V390" class="line"/>
+  <path d="M900 482V530" class="line"/>
+
+  <!-- Success path to response -->
+  <path d="M1030 576H1110V296H1185" class="line"/>
+  <text x="1060" y="558" class="arrowLabel">SUCCESS</text>
+
+  <path d="M1310 342V390" class="line"/>
+  <path d="M1310 482V530" class="line"/>
+  <path d="M1310 622V720" class="line"/>
+
+  <!-- Error path: execute_sql to repair_sql -->
+  <path d="M900 622V720" class="dashLine"/>
+  <text x="918" y="680" class="arrowLabel">ERROR</text>
+
+  <!-- Retry loop: repair_sql back to validate_sql, routed outside to avoid overlap -->
+  <path d="M770 766H700V436H770" class="dashLine"/>
+  <text x="635" y="600" class="arrowLabel" transform="rotate(-90 635 600)">RETRY VALIDATION</text>
+
+  <!-- Support cards at bottom -->
+  <rect x="180" y="935" width="360" height="70" rx="20" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="210" y="965" class="nodeLabel">AGENT STATE</text>
+  <text x="210" y="990" class="smallText">question, intent, schema, plan, SQL, result, chart, answer, memory</text>
+
+  <rect x="620" y="935" width="360" height="70" rx="20" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="650" y="965" class="nodeLabel">SESSION THREAD</text>
+  <text x="650" y="990" class="smallText">MemorySaver stores state by thread_id / session_id</text>
+
+  <rect x="1060" y="935" width="360" height="70" rx="20" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="1090" y="965" class="nodeLabel">STREAMING EVENTS</text>
+  <text x="1090" y="990" class="smallText">step_start, progress, step_end, error, completed for SSE UI</text>
+
+  <!-- Bottom support connectors -->
+  <path d="M380 762V900H360V935" class="softLine"/>
+  <path d="M1310 812V900H800V935" class="softLine"/>
+  <path d="M1310 812V900H1240V935" class="softLine"/>
+
+</svg>

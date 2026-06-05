@@ -10,6 +10,7 @@ from app.agent.nodes.build_analysis_plan import build_analysis_plan_node
 from app.agent.nodes.generate_sql import generate_sql_node
 from app.agent.nodes.validate_sql import validate_sql_node
 from app.agent.nodes.execute_sql import execute_sql_node
+from app.agent.nodes.build_visualization import build_visualization_node
 from app.agent.nodes.analyze_result import analyze_result_node
 from app.agent.nodes.update_memory import update_memory_node
 from app.agent.nodes.repair_sql import repair_sql_node
@@ -21,7 +22,7 @@ def should_repair_or_continue(state: AgentState) -> str:
     if state.execution_error:
         return "analyze_result"
 
-    return "analyze_result"
+    return "build_visualization"
 
 
 def build_graph():
@@ -34,6 +35,7 @@ def build_graph():
     builder.add_node("validate_sql", validate_sql_node)
     builder.add_node("execute_sql", execute_sql_node)
     builder.add_node("repair_sql", repair_sql_node)
+    builder.add_node("build_visualization", build_visualization_node)
     builder.add_node("analyze_result", analyze_result_node)
     builder.add_node("update_memory", update_memory_node)
 
@@ -49,11 +51,13 @@ def build_graph():
         should_repair_or_continue,
         {
             "repair_sql": "repair_sql",
+            "build_visualization": "build_visualization",
             "analyze_result": "analyze_result",
         },
     )
 
     builder.add_edge("repair_sql", "validate_sql")
+    builder.add_edge("build_visualization", "analyze_result")
     builder.add_edge("analyze_result", "update_memory")
     builder.add_edge("update_memory", END)
 

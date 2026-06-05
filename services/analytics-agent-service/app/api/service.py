@@ -3,11 +3,29 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from app.agent.service import get_state, run_agent, stream_agent
 from app.common.logging import get_logger
 from app.api.sse import event_name_for_payload
 
 logger = get_logger(__name__)
+
+
+async def _run_agent(session_id: str, question: str) -> dict[str, Any]:
+    from app.agent.service import run_agent
+
+    return await run_agent(session_id=session_id, question=question)
+
+
+async def _stream_agent(session_id: str, question: str) -> AsyncGenerator[dict[str, Any], None]:
+    from app.agent.service import stream_agent
+
+    async for event in stream_agent(session_id=session_id, question=question):
+        yield event
+
+
+async def _get_state(session_id: str):
+    from app.agent.service import get_state
+
+    return await get_state(session_id=session_id)
 
 
 def _to_jsonable(value: Any) -> Any:
@@ -38,6 +56,7 @@ def _build_completed_payload(session_id: str, question: str, values: dict[str, A
         "validated_sql": values.get("validated_sql"),
         "final_answer": values.get("final_answer"),
         "query_result": _to_jsonable(values.get("query_result")),
+        "visualization": _to_jsonable(values.get("visualization")),
         "error": values.get("error"),
     }
 
@@ -45,7 +64,7 @@ def _build_completed_payload(session_id: str, question: str, values: dict[str, A
 async def run_query(session_id: str, question: str) -> dict[str, Any]:
     logger.info("API request: run_query | session_id=%s", session_id)
     try:
-        result = await run_agent(session_id=session_id, question=question)
+        result = await _run_agent(session_id=session_id, question=question)
         logger.info("API response: run_query success | session_id=%s", session_id)
         return result
     except Exception as exc:
@@ -65,7 +84,7 @@ async def stream_query(session_id: str, question: str) -> AsyncGenerator[tuple[s
     )
 
     try:
-        async for event in stream_agent(session_id=session_id, question=question):
+        async for event in _stream_agent(session_id=session_id, question=question):
             normalized = _normalize_progress_event(event)
             yield (event_name_for_payload(normalized), normalized)
 
@@ -85,5 +104,5 @@ async def stream_query(session_id: str, question: str) -> AsyncGenerator[tuple[s
 
 
 async def get_query_state_values(session_id: str) -> dict[str, Any]:
-    state = await get_state(session_id=session_id)
+    state = await _get_state(session_id=session_id)
     return _to_jsonable(state.values if state else {})

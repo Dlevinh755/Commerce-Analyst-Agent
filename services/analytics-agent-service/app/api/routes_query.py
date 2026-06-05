@@ -298,6 +298,11 @@ async def query_endpoint(req: QueryRequest) -> QueryResponse:
             validated_sql=result.get("validated_sql"),
             final_answer=result.get("final_answer"),
             query_result=query_result.model_dump() if query_result else None,
+            visualization=(
+                result["visualization"].model_dump()
+                if result.get("visualization") is not None
+                else None
+            ),
             error=result.get("error"),
         )
     except Exception as exc:

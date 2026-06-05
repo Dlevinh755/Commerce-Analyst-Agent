@@ -96,15 +96,17 @@ server {
 
     # Điều hướng Recommender Service (FastAPI)
     # Client gọi: /api/v1/recommendations/... → recommender-service nhận: /recommendations/...
-    location = /api/v1/recommendations {
+    # Client gọi: /api/v1/recommendations/by-username/... → recommender-service nhận: /recommendations/by-username/...
+    location ^~ /api/v1/recommendations {
         set $recommender_upstream http://${RECOMMENDER_SERVICE_HOST}:${RECOMMENDER_SERVICE_PORT};
-        rewrite ^ /recommendations break;
+        rewrite ^/api/v1/recommendations(.*)$ /recommendations$1 break;
         proxy_pass $recommender_upstream;
     }
 
-    location ^~ /api/v1/recommendations/ {
+    # Client gọi: /api/v1/recommend/... → recommender-service nhận: /recommend/...
+    location ^~ /api/v1/recommend {
         set $recommender_upstream http://${RECOMMENDER_SERVICE_HOST}:${RECOMMENDER_SERVICE_PORT};
-        rewrite ^/api/v1/recommendations/(.*)$ /recommendations/$1 break;
+        rewrite ^/api/v1/recommend(.*)$ /recommend$1 break;
         proxy_pass $recommender_upstream;
     }
 

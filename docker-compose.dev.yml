@@ -2,7 +2,7 @@ services:
   postgres-db:
     image: postgres:15-alpine
     container_name: commerce-postgres
-    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
+    command: [ "postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10" ]
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -10,9 +10,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT:-5432}:5432" 
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -42,7 +42,7 @@ services:
     container_name: commerce-kafka-init
     depends_on:
       - kafka
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: [ "/bin/sh", "-c" ]
     command: |
       "
         echo '=> Waiting for Kafka to be ready...';
@@ -83,7 +83,7 @@ services:
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
       S3_REGION: ${S3_REGION}
     healthcheck:
-      test: ["CMD", "curl", "-s", "-f", "http://localhost:8083/"]
+      test: [ "CMD", "curl", "-s", "-f", "http://localhost:8083/" ]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -125,7 +125,6 @@ services:
       KAFKA_CLUSTERS_0_NAME: local_kraft
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
 
-
   gateway:
     build: ./gateway
     container_name: commerce-gateway
@@ -163,6 +162,8 @@ services:
     depends_on:
       product-service:
         condition: service_healthy
+      recommender-service:
+        condition: service_healthy
 
   auth-service:
     build: ./services/auth-service
@@ -179,14 +180,14 @@ services:
     volumes:
       - ./dev-seeds.json:/app/dev-seeds.json:ro
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
     depends_on:
       postgres-db:
-          condition: service_healthy
+        condition: service_healthy
     networks:
       - default
       - commerce-network
@@ -213,7 +214,7 @@ services:
       postgres-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/books?page=1&page_size=1')"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/books?page=1&page_size=1')" ]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -262,7 +263,7 @@ services:
       product-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')" ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -341,23 +342,31 @@ services:
     env_file:
       - .env
     environment:
-      - RECOMMENDER_DATA_SOURCE=${RECOMMENDER_DATA_SOURCE:-auto}
+      - RECOMMENDER_DATA_SOURCE=${RECOMMENDER_DATA_SOURCE:-databricks}
+      - QDRANT_URL=${QDRANT_URL}
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
+      - BOOK_COLLECTION=${BOOK_COLLECTION:-book_embeddings}
+      - USER_COLLECTION=${USER_COLLECTION:-user_embeddings}
+      - TOP_K=${TOP_K:-5}
+      - RECOMMENDER_OVERSAMPLE_FACTOR=${RECOMMENDER_OVERSAMPLE_FACTOR:-5}
+      - RECOMMENDER_MAX_CANDIDATES=${RECOMMENDER_MAX_CANDIDATES:-100}
       - DATABRICKS_HOST=${DATABRICKS_HOST}
       - DATABRICKS_HTTP_PATH=${DATABRICKS_HTTP_PATH}
       - DATABRICKS_ACCESS_TOKEN=${DATABRICKS_TOKEN}
       - DATABRICKS_CATALOG=${DATABRICKS_CATALOG_NAME}
       - DATABRICKS_SCHEMA=${DATABRICKS_SCHEMA_NAME}
-      - DATABRICKS_USERS_SOURCE=${DATABRICKS_USERS_SOURCE}
-      - DATABRICKS_PRODUCTS_SOURCE=${DATABRICKS_PRODUCTS_SOURCE}
-      - DATABRICKS_INTERACTIONS_SOURCE=${DATABRICKS_INTERACTIONS_SOURCE}
-      - DATABRICKS_REVIEWS_SOURCE=${DATABRICKS_REVIEWS_SOURCE}
-      - DATABRICKS_PRODUCTS_SQL=SELECT CAST(book_id AS STRING) AS product_id, title, '' AS seller_username, COALESCE(author, 'Unknown') AS author, COALESCE(category_name, 'Unknown') AS category, COALESCE(price, 0) AS price, '' AS image_url FROM dim_books
-      - DATABRICKS_INTERACTIONS_SQL=SELECT u.username AS buyer_username, CAST(s.book_id AS STRING) AS product_id, SUM(COALESCE(s.quantity, 1)) AS quantity FROM fact_sales s JOIN dim_users u ON s.buyer_id = u.user_id GROUP BY u.username, s.book_id
-      - DATABRICKS_REVIEWS_SQL=SELECT CAST(book_id AS STRING) AS product_id, AVG(COALESCE(score, 0)) AS rating_average, MAX(COALESCE(total_reviews_at_snapshot, 0)) AS review_count FROM fact_reviews GROUP BY book_id
+      - DATABRICKS_PRODUCTS_SOURCE=${DATABRICKS_PRODUCTS_SOURCE:-dim_books}
+      - DATABRICKS_PRODUCTS_ID_COLUMN=${DATABRICKS_PRODUCTS_ID_COLUMN:-book_id}
+      - DATABRICKS_PRODUCTS_SQL=${DATABRICKS_PRODUCTS_SQL}
+      - PRODUCT_SERVICE_URL=http://product-service:8001
     ports:
       - "${RECOMMENDER_SERVICE_PORT:-8009}:8009"
-    volumes:
-      - ./dev-seeds.json:/app/dev-seeds.json:ro
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8009/health')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -413,13 +422,13 @@ services:
       - gateway
     networks:
       - default
-    
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: commerce-cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
-  
+
 volumes:
   postgres_data:
   kafka_data:

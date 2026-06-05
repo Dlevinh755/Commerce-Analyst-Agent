@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 const hmrHost = process.env.VITE_HMR_HOST;
 const hmrProtocol = process.env.VITE_HMR_PROTOCOL;
 const hmrClientPort = process.env.VITE_HMR_CLIENT_PORT;
+const hmrDisabled = process.env.VITE_HMR === 'false';
 
 export default defineConfig({
   plugins: [react()],
@@ -23,14 +24,17 @@ export default defineConfig({
   server: {
     port: 5173,
     host: '0.0.0.0',
-    hmr:
-      hmrHost
+    // Custom HMR qua domain Docker có thể gây reload trang liên tục nếu WebSocket lỗi.
+    // Đặt VITE_HMR=false trong .env để tắt HMR khi gặp hiện tượng đó.
+    hmr: hmrDisabled
+      ? false
+      : hmrHost
         ? {
             host: hmrHost,
             protocol: hmrProtocol || 'wss',
             clientPort: Number(hmrClientPort || 443),
           }
-        : undefined,
+        : true,
     proxy: {
       '/api': {
         target: process.env.VITE_DEV_PROXY_TARGET || 'http://localhost:80',

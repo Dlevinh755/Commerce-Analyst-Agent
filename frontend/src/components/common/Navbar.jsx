@@ -4,7 +4,7 @@ import useCart from '../../hooks/useCart';
 import { getDefaultRouteByRole, normalizeRole } from '../../utils/role';
 
 const baseLinkClass =
-  'group inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900';
+  'group inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-ink transition hover:bg-brand-50 hover:text-brand-700';
 
 function NavItem({ to, children, badge, icon, className }) {
   return (
@@ -12,14 +12,14 @@ function NavItem({ to, children, badge, icon, className }) {
       to={to}
       className={({ isActive }) =>
         `${baseLinkClass} ${
-          isActive ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-100' : ''
+          isActive ? 'bg-brand-100 text-brand-700 ring-2 ring-brand-200' : ''
         } ${className || ''}`
       }
     >
-      <span className="text-slate-500 transition group-hover:text-slate-700">{icon}</span>
+      <span className="text-stone-500 transition group-hover:text-brand-600">{icon}</span>
       <span>{children}</span>
       {badge ? (
-        <span className="rounded-full bg-brand-100 px-1.5 py-0.5 text-xs font-semibold text-brand-700">{badge}</span>
+        <span className="rounded-full bg-brand-500 px-1.5 py-0.5 text-xs font-bold text-white">{badge}</span>
       ) : null}
     </NavLink>
   );
@@ -28,11 +28,15 @@ function NavItem({ to, children, badge, icon, className }) {
 export default function Navbar() {
   const navigate = useNavigate();
   const isAuthenticated = useAuth((state) => state.isAuthenticated);
+  const isHydrated = useAuth((state) => state.isHydrated);
+  const accessToken = useAuth((state) => state.accessToken);
   const logout = useAuth((state) => state.logout);
   const user = useAuth((state) => state.user);
   const totalItems = useCart((state) => state.totalItems());
   const role = normalizeRole(user?.role);
   const dashboardPath = getDefaultRouteByRole(role);
+  const isSessionReady = isAuthenticated || Boolean(accessToken);
+  const showGuestLinks = isHydrated && !isSessionReady;
 
   const onLogout = async () => {
     try {
@@ -43,13 +47,13 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b border-slate-200/80 bg-white/95 backdrop-blur">
+    <header className="border-b-2 border-orange-100/80 bg-gradient-to-r from-orange-50 via-white to-orange-50 shadow-sm">
       <div className="container-page flex min-h-16 flex-col gap-2 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:py-0">
-        <Link to="/" className="text-3xl font-bold leading-none text-slate-800 sm:text-4xl">
+        <Link to="/" className="text-3xl font-extrabold leading-none text-ink sm:text-4xl">
           Book Store
         </Link>
 
-        <nav className="flex w-full flex-wrap items-center justify-start gap-1.5 rounded-full border border-slate-200 bg-white p-1.5 shadow-sm sm:w-auto sm:justify-end">
+        <nav className="flex w-full flex-wrap items-center justify-start gap-1.5 rounded-full border-2 border-stone-200 bg-white p-1.5 sm:w-auto sm:justify-end">
           <NavItem
             to="/books"
             icon={
@@ -62,7 +66,7 @@ export default function Navbar() {
             Sách
           </NavItem>
 
-          {isAuthenticated ? (
+          {isSessionReady ? (
             <>
               {role === 'admin' ? (
                 <NavItem
@@ -249,7 +253,7 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={onLogout}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                className="inline-flex items-center gap-2 rounded-full border-2 border-stone-200 px-3 py-2 text-sm font-semibold text-ink transition hover:bg-stone-50"
               >
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -259,7 +263,7 @@ export default function Navbar() {
                 Đăng xuất
               </button>
             </>
-          ) : (
+          ) : showGuestLinks ? (
             <>
               <NavItem
                 to="/login"
@@ -277,7 +281,7 @@ export default function Navbar() {
                 Đăng ký
               </NavLink>
             </>
-          )}
+          ) : null}
         </nav>
       </div>
     </header>

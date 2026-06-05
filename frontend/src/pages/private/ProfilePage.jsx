@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import useAuth from '../../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import useOrderStore from '../../store/orderStore';
@@ -45,10 +45,16 @@ export default function ProfilePage() {
     [displayName]
   );
 
+  const profileFetchStartedRef = useRef(false);
+
   useEffect(() => {
-    if (!user) {
-      fetchProfile().catch(() => {});
+    if (user || profileFetchStartedRef.current) {
+      return;
     }
+    profileFetchStartedRef.current = true;
+    fetchProfile().catch(() => {
+      profileFetchStartedRef.current = false;
+    });
   }, [user, fetchProfile]);
 
   useEffect(() => {

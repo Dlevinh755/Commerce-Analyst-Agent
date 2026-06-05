@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import useAuth from '../../hooks/useAuth';
 import useOrderStore from '../../store/orderStore';
 import { formatCurrencyVND } from '../../utils/currency';
@@ -50,14 +50,23 @@ export default function MyPaymentsPage() {
   const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
   const fetchPayments = useOrderStore((state) => state.fetchPayments);
   const fetchOrders = useOrderStore((state) => state.fetchOrders);
-  const isLoading = useOrderStore((state) => state.isLoading);
+  const paymentsLoading = useOrderStore((state) => state.paymentsLoading);
+  const ordersLoading = useOrderStore((state) => state.ordersLoading);
   const error = useOrderStore((state) => state.error);
+  const dataFetchedRef = useRef(false);
 
   useEffect(() => {
     if (!isHydrated || !isAuthenticated) {
+      dataFetchedRef.current = false;
       return;
     }
-    Promise.all([fetchPayments(), fetchOrders()]).catch(() => {});
+    if (dataFetchedRef.current) {
+      return;
+    }
+    dataFetchedRef.current = true;
+    Promise.all([fetchPayments(), fetchOrders({ silent: true })]).catch(() => {
+      dataFetchedRef.current = false;
+    });
   }, [fetchPayments, fetchOrders, isHydrated, isAuthenticated]);
 
   const orderById = useMemo(() => {
@@ -113,10 +122,12 @@ export default function MyPaymentsPage() {
         </div>
       </div>
 
-      {isLoading ? <div className="card">Đang tải lịch sử thanh toán...</div> : null}
+      {paymentsLoading && !displayPayments.length ? (
+        <div className="card">Đang tải lịch sử thanh toán...</div>
+      ) : null}
       {error ? <div className="card text-red-600">{error}</div> : null}
 
-      {!isLoading && !displayPayments.length ? (
+      {!paymentsLoading && !ordersLoading && !displayPayments.length ? (
         <div className="card text-center text-slate-600">Không tìm thấy thanh toán nào.</div>
       ) : null}
 

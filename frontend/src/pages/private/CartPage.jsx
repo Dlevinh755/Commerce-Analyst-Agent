@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import useCart from '../../hooks/useCart';
 import { formatCurrencyVND } from '../../utils/currency';
@@ -20,8 +20,16 @@ export default function CartPage() {
   const totalAmount = totalAmountFn ? totalAmountFn() : 0;
   const totalItems = totalItemsFn ? totalItemsFn() : 0;
 
+  const cartFetchedRef = useRef(false);
+
   useEffect(() => {
-    fetchCart();
+    if (cartFetchedRef.current) {
+      return;
+    }
+    cartFetchedRef.current = true;
+    fetchCart().catch(() => {
+      cartFetchedRef.current = false;
+    });
   }, [fetchCart]);
 
   const onClearCart = async () => {

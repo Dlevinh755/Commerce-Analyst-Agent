@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SearchBar from '../../components/common/SearchBar';
 import FilterPanel from '../../components/common/FilterPanel';
-import BookCard from '../../components/common/BookCard';
 import BookGrid from '../../components/common/BookGrid';
 import Pagination from '../../components/common/Pagination';
 import Toast from '../../components/common/Toast';
@@ -13,7 +12,7 @@ import { sellerProductService } from '../../services/sellerProductService';
 import { normalizeBook } from '../../utils/bookMapper';
 import { resolveRecommendedBooks } from '../../utils/resolveRecommendedBook';
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 10;
 
 export default function BookListPage() {
   const [searchParams] = useSearchParams();
@@ -189,86 +188,92 @@ export default function BookListPage() {
   };
 
   return (
-    <section className="space-y-6">
-      <div className="relative overflow-hidden rounded-2xl bg-[linear-gradient(120deg,_rgba(16,38,68,0.88),_rgba(16,38,68,0.75)),radial-gradient(circle_at_10%_20%,_#1f8ca8,_transparent_40%),radial-gradient(circle_at_90%_20%,_#c7a86a,_transparent_30%),linear-gradient(140deg,_#0d3b66,_#1f4a72_45%,_#254f7b)] p-6 text-white shadow-md md:p-8">
-        <div className="relative z-10 max-w-3xl">
-          <h1 className="text-3xl font-bold md:text-4xl">Khám phá cuốn sách tiếp theo của bạn</h1>
-          <p className="mt-2 text-slate-100">
-          Duyệt nhiều đầu sách từ các dịch vụ khác nhau trong giao diện gọn gàng, dễ dùng.
-          </p>
-          <div className="mt-5 max-w-2xl rounded-2xl border border-slate-200/80 bg-slate-100/90 p-2 shadow-sm backdrop-blur-sm">
-            <SearchBar
-              value={searchText}
-              onChange={setSearchText}
-              onSubmit={onSearchSubmit}
-              placeholder="Tìm theo tên sách, tác giả hoặc từ khóa"
+    <section className="page-shell space-y-6">
+      <div className="relative overflow-hidden rounded-3xl border-2 border-orange-100/80 bg-gradient-to-br from-orange-50 via-amber-50 to-amber-100 p-6 shadow-glow md:p-8">
+        <div className="pointer-events-none absolute -left-10 top-0 h-40 w-40 rounded-full bg-orange-200/40 blur-3xl" />
+        <div className="pointer-events-none absolute -right-6 bottom-0 h-48 w-48 rounded-full bg-amber-300/40 blur-3xl" />
+        <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start">
+          <div>
+            <p className="mb-2 inline-flex rounded-full bg-white/90 px-3 py-1 text-xs font-bold uppercase tracking-wide text-brand-700 ring-2 ring-brand-100">
+              Bộ sưu tập mới mỗi tuần
+            </p>
+            <h1 className="text-3xl font-extrabold text-ink md:text-4xl">Khám phá cuốn sách tiếp theo của bạn</h1>
+            <p className="mt-2 max-w-2xl font-semibold text-stone-600">
+              Duyệt nhiều đầu sách từ các dịch vụ khác nhau trong giao diện gọn gàng, dễ dùng.
+            </p>
+            <div className="mt-5 rounded-2xl border-2 border-white bg-white/90 p-2 shadow-sm lg:max-w-xl">
+              <SearchBar
+                value={searchText}
+                onChange={setSearchText}
+                onSubmit={onSearchSubmit}
+                placeholder="Tìm theo tên sách, tác giả hoặc từ khóa"
+              />
+            </div>
+          </div>
+          <div className="w-full lg:-ml-2.5 lg:mt-2 lg:self-center lg:justify-self-start">
+            <FilterPanel
+              layout="vertical"
+              categories={categoryOptions}
+              selectedCategory={selectedCategory}
+              onCategoryChange={onCategoryChange}
+              sortBy={sortBy}
+              onSortChange={onSortChange}
             />
           </div>
         </div>
-        <div className="pointer-events-none absolute -bottom-16 -right-10 h-44 w-44 rounded-full bg-cyan-300/20 blur-2xl" />
       </div>
 
       {error ? <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">{error}</div> : null}
 
-      <div className="grid gap-5 lg:grid-cols-[240px_1fr]">
-        <FilterPanel
-          categories={categoryOptions}
-          selectedCategory={selectedCategory}
-          onCategoryChange={onCategoryChange}
-          sortBy={sortBy}
-          onSortChange={onSortChange}
-        />
-
-        <div>
-          {shouldShowRecommendations && (recommendLoading || recommended.length > 0) ? (
-            <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-lg">✨</span>
-                  <h2 className="text-xl font-semibold text-slate-800">Gợi ý cho bạn</h2>
-                </div>
+      <div className="space-y-6">
+        {shouldShowRecommendations && (recommendLoading || recommended.length > 0) ? (
+          <div className="rounded-2xl border-2 border-orange-100 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">✨</span>
+                <h2 className="text-xl font-semibold text-ink">Gợi ý cho bạn</h2>
               </div>
-              {recommendLoading ? (
-                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-[540px] animate-pulse rounded-2xl border border-slate-200 bg-slate-100"
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                  {recommended.map((book) => (
-                    <BookCard
-                      key={book.id}
-                      book={book}
-                      onUnauthorized={setToast}
-                      onAddedToCart={setToast}
-                      compactActions
-                    />
-                  ))}
-                </div>
-              )}
             </div>
-          ) : null}
+            {recommendLoading ? (
+              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="aspect-[3/4] animate-pulse rounded-2xl border border-stone-200 bg-stone-100"
+                  />
+                ))}
+              </div>
+            ) : (
+              <BookGrid
+                books={recommended}
+                onUnauthorized={setToast}
+                onAddedToCart={setToast}
+                compactActions
+              />
+            )}
+          </div>
+        ) : null}
 
-          {loading ? (
-            <div className="card text-slate-600">Đang tải sách...</div>
-          ) : (
-            <>
-              {displayBooks.length === 0 ? (
-                <div className="card text-slate-600">Không có sách phù hợp.</div>
-              ) : (
-                <>
-                  <h4 className="mb-3 text-lg font-semibold text-slate-800">Sách nổi bật</h4>
-                  <BookGrid books={displayBooks} onUnauthorized={setToast} onAddedToCart={setToast} />
-                  <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
-                </>
-              )}
-            </>
-          )}
-        </div>
+        {loading ? (
+          <div className="card text-slate-600">Đang tải sách...</div>
+        ) : (
+          <>
+            {displayBooks.length === 0 ? (
+              <div className="card text-slate-600">Không có sách phù hợp.</div>
+            ) : (
+              <>
+                <div className="flex items-end justify-between gap-3">
+                  <h4 className="text-lg font-semibold text-ink">Sách nổi bật</h4>
+                  <span className="text-xs font-bold uppercase tracking-wide text-stone-500">
+                    {totalItems.toLocaleString('vi-VN')} kết quả
+                  </span>
+                </div>
+                <BookGrid books={displayBooks} onUnauthorized={setToast} onAddedToCart={setToast} />
+                <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+              </>
+            )}
+          </>
+        )}
       </div>
 
       <Toast message={toast} onClose={() => setToast('')} />

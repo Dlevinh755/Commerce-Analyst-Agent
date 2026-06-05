@@ -33,7 +33,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
     <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
       <button
         type="button"
-        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+        className="rounded-lg border-2 border-stone-300 px-3 py-2 text-sm font-bold text-ink transition hover:bg-stone-50 disabled:opacity-40"
         disabled={currentPage === 1}
         onClick={() => onPageChange(currentPage - 1)}
       >
@@ -43,7 +43,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
       {pages.map((page) => {
         if (String(page).startsWith('ellipsis')) {
           return (
-            <span key={page} className="px-1 text-slate-500">
+            <span key={page} className="px-1 font-bold text-stone-500">
               ...
             </span>
           );
@@ -53,10 +53,10 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
           <button
             key={page}
             type="button"
-            className={`rounded-md px-3 py-1.5 text-sm ${
+            className={`min-w-[2.5rem] rounded-lg px-3 py-2 text-sm font-bold ${
               page === currentPage
-                ? 'bg-brand-500 text-white'
-                : 'border border-slate-300 text-slate-700'
+                ? 'bg-brand-500 text-white shadow-sm'
+                : 'border-2 border-stone-300 text-ink hover:bg-brand-50'
             }`}
             onClick={() => onPageChange(page)}
             aria-current={page === currentPage ? 'page' : undefined}
@@ -68,7 +68,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
 
       <button
         type="button"
-        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+        className="rounded-lg border-2 border-stone-300 px-3 py-2 text-sm font-bold text-ink transition hover:bg-stone-50 disabled:opacity-40"
         disabled={currentPage === totalPages}
         onClick={() => onPageChange(currentPage + 1)}
       >

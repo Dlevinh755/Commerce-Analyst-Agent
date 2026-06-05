@@ -4,35 +4,56 @@ export default function FilterPanel({
   onCategoryChange,
   sortBy,
   onSortChange,
+  layout = 'vertical',
 }) {
+  const isHorizontal = layout === 'horizontal';
+  const wrapperClass = isHorizontal
+    ? 'flex flex-col gap-4 rounded-2xl border-2 border-orange-100 bg-white/90 p-4 shadow-sm md:flex-row md:items-end'
+    : 'h-fit rounded-2xl border-2 border-stone-200 bg-white p-4 shadow-sm';
+  const labelClass = isHorizontal
+    ? 'mb-1 block text-xs font-bold uppercase tracking-wide text-stone-600'
+    : 'mb-1 block text-xs font-bold uppercase tracking-wide text-stone-600';
+  const fieldClass = isHorizontal ? 'w-full md:w-56' : '';
+
   return (
-    <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="mb-3 text-base font-semibold text-slate-700">Bộ lọc</h3>
+    <aside className={wrapperClass}>
+      <div className={isHorizontal ? 'flex flex-1 flex-col gap-3 md:flex-row md:items-end' : 'space-y-3'}>
+        <div className={fieldClass}>
+          <h3 className={isHorizontal ? 'mb-1 text-sm font-bold text-ink' : 'mb-3 text-base font-bold text-ink'}>
+            Bộ lọc
+          </h3>
+          <label className={labelClass}>Danh mục</label>
+          <select
+            className="input py-2 text-sm"
+            value={selectedCategory}
+            onChange={(e) => onCategoryChange(e.target.value)}
+          >
+            <option value="all">Tất cả danh mục</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Danh mục</label>
-      <select
-        className="input py-2 text-sm"
-        value={selectedCategory}
-        onChange={(e) => onCategoryChange(e.target.value)}
-      >
-        <option value="all">Tất cả danh mục</option>
-        {categories.map((category) => (
-          <option key={category} value={category}>
-            {category}
-          </option>
-        ))}
-      </select>
-
-      <label className="mb-2 mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-500">Sắp xếp theo</label>
-      <select className="input py-2 text-sm" value={sortBy} onChange={(e) => onSortChange(e.target.value)}>
-        <option value="newest">Mới nhất</option>
-        <option value="oldest">Cũ nhất</option>
-        <option value="price-asc">Giá: Thấp đến cao</option>
-        <option value="price-desc">Giá: Cao đến thấp</option>
-        <option value="purchase-desc">Đã mua: Nhiều đến ít</option>
-        <option value="purchase-asc">Đã mua: Ít đến nhiều</option>
-        <option value="rating-desc">Đánh giá cao</option>
-      </select>
+        <div className={fieldClass}>
+          <label className={`${labelClass} ${isHorizontal ? '' : 'mt-1'}`}>Sắp xếp theo</label>
+          <select
+            className="input py-2 text-sm"
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value)}
+          >
+            <option value="newest">Mới nhất</option>
+            <option value="oldest">Cũ nhất</option>
+            <option value="price-asc">Giá: Thấp đến cao</option>
+            <option value="price-desc">Giá: Cao đến thấp</option>
+            <option value="purchase-desc">Đã mua: Nhiều đến ít</option>
+            <option value="purchase-asc">Đã mua: Ít đến nhiều</option>
+            <option value="rating-desc">Đánh giá cao</option>
+          </select>
+        </div>
+      </div>
     </aside>
   );
 }

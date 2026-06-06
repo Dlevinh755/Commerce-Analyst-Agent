@@ -293,7 +293,7 @@
   <path d="M1030 576H1110V296H1185" class="line"/>
   <text x="1060" y="558" class="arrowLabel">SUCCESS</text>
 
-  <path d="M1310 342V390" class="line"/>
+  <path d="M1310 352V390" class="line"/>
   <path d="M1310 482V530" class="line"/>
   <path d="M1310 622V720" class="line"/>
 
@@ -305,11 +305,6 @@
   <path d="M770 766H700V436H770" class="dashLine"/>
   <text x="635" y="600" class="arrowLabel" transform="rotate(-90 635 600)">RETRY VALIDATION</text>
 
-  <!-- Support cards at bottom -->
-  <rect x="180" y="935" width="360" height="70" rx="20" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="210" y="965" class="nodeLabel">AGENT STATE</text>
-  <text x="210" y="990" class="smallText">question, intent, schema, plan, SQL, result, chart, answer, memory</text>
-
   <rect x="620" y="935" width="360" height="70" rx="20" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
   <text x="650" y="965" class="nodeLabel">SESSION THREAD</text>
   <text x="650" y="990" class="smallText">MemorySaver stores state by thread_id / session_id</text>
@@ -319,7 +314,6 @@
   <text x="1090" y="990" class="smallText">step_start, progress, step_end, error, completed for SSE UI</text>
 
   <!-- Bottom support connectors -->
-  <path d="M380 762V900H360V935" class="softLine"/>
   <path d="M1310 812V900H800V935" class="softLine"/>
   <path d="M1310 812V900H1240V935" class="softLine"/>
 

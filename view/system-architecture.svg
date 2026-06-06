@@ -1,332 +1,151 @@
-<svg width="1600" height="940" viewBox="0 0 1600 940" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">Commerce Analyst Agent System Architecture</title>
-  <desc id="desc">System architecture showing frontend, gateway, application services, and data platform.</desc>
+<svg width="1600" height="820" viewBox="0 0 1600 820" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Commerce Analyst Agent - Compact System Architecture</title>
+  <desc id="desc">Compact system architecture with frontend, application services, external payment, and data platform.</desc>
 
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="940" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="820" gradientUnits="userSpaceOnUse">
       <stop stop-color="#F8FAFC"/>
       <stop offset="1" stop-color="#EEF2FF"/>
     </linearGradient>
 
-    <filter id="softShadow" x="-15%" y="-15%" width="130%" height="130%">
-      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0F172A" flood-opacity="0.10"/>
+    <filter id="softShadow" x="-12%" y="-12%" width="124%" height="124%">
+      <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.10"/>
     </filter>
 
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto">
       <path d="M0 0L10 5L0 10Z" fill="#334155"/>
     </marker>
 
     <style>
-      text {
-        font-family: "Inter", "Segoe UI", Arial, sans-serif;
-        paint-order: stroke;
-        stroke: transparent;
-      }
-
-      .pageTitle {
-        font-size: 30px;
-        font-weight: 800;
-        fill: #0F172A;
-      }
-
-      .pageSub {
-        font-size: 17px;
-        font-weight: 500;
-        fill: #475569;
-      }
-
-      .sectionTitle {
-        font-size: 28px;
-        font-weight: 800;
-        fill: #0F172A;
-        letter-spacing: 0.05em;
-      }
-
-      .sectionSub {
-        font-size: 16px;
-        font-weight: 500;
-        fill: #475569;
-      }
-
-      .groupLabel {
-        font-size: 13px;
-        font-weight: 800;
-        fill: #334155;
-        letter-spacing: 0.08em;
-      }
-
-      .cardTitle {
-        font-size: 18px;
-        font-weight: 800;
-        fill: #0F172A;
-      }
-
-      .cardBody {
-        font-size: 14px;
-        font-weight: 500;
-        fill: #475569;
-      }
-
-      .iconText {
-        font-size: 17px;
-        font-weight: 800;
-        fill: #0F172A;
-        text-anchor: middle;
-        dominant-baseline: middle;
-      }
-
-      .arrowLabel {
-        font-size: 12px;
-        font-weight: 800;
-        fill: #64748B;
-        letter-spacing: 0.06em;
-      }
-
-      .panel {
-        fill: #FFFFFF;
-        stroke-width: 2;
-        filter: url(#softShadow);
-      }
-
-      .card {
-        fill: #F8FAFC;
-        stroke: #CBD5E1;
-        stroke-width: 2;
-      }
-
-      .blueStroke { stroke: #BFDBFE; }
-      .purpleStroke { stroke: #DDD6FE; }
-      .greenStroke { stroke: #BBF7D0; }
-
-      .blueBar { fill: #3B82F6; }
-      .purpleBar { fill: #8B5CF6; }
-      .greenBar { fill: #22C55E; }
-
-      .blueIcon { fill: #DBEAFE; }
-      .purpleIcon { fill: #DDD6FE; }
-      .greenIcon { fill: #D1FAE5; }
-
-      .line {
-        stroke: #334155;
-        stroke-width: 3;
-        marker-end: url(#arrow);
-      }
-
-      .dashLine {
-        stroke: #94A3B8;
-        stroke-width: 3;
-        stroke-dasharray: 8 8;
-        marker-end: url(#arrow);
-      }
+      text{font-family:"Inter","Segoe UI",Arial,sans-serif;paint-order:stroke;stroke:transparent}
+      .pageTitle{font-size:30px;font-weight:850;fill:#0F172A}
+      .pageSub{font-size:15px;font-weight:550;fill:#64748B}
+      .sectionTitle{font-size:20px;font-weight:850;fill:#0F172A;letter-spacing:.08em}
+      .groupLabel{font-size:12px;font-weight:850;fill:#475569;letter-spacing:.08em}
+      .cardTitle{font-size:16px;font-weight:850;fill:#0F172A}
+      .cardBody{font-size:12px;font-weight:600;fill:#64748B}
+      .chipText{font-size:12px;font-weight:850;fill:#475569;letter-spacing:.06em}
+      .panel{fill:#FFFFFF;stroke-width:2;filter:url(#softShadow)}
+      .card{fill:#F8FAFC;stroke:#CBD5E1;stroke-width:1.6;filter:url(#softShadow)}
+      .cardHot{fill:#FFF7ED;stroke:#FDBA74;stroke-width:1.8;filter:url(#softShadow)}
+      .blueStroke{stroke:#BFDBFE}.purpleStroke{stroke:#DDD6FE}.greenStroke{stroke:#BBF7D0}.amberStroke{stroke:#FCD34D}
+      .blueBar{fill:#3B82F6}.purpleBar{fill:#8B5CF6}.greenBar{fill:#22C55E}.amberBar{fill:#F59E0B}
+      .iconBg{fill:#FFFFFF;stroke:#E2E8F0;stroke-width:1.5}
+      .blueIcon{color:#2563EB}.purpleIcon{color:#7C3AED}.greenIcon{color:#16A34A}.amberIcon{color:#D97706}.slateIcon{color:#334155}
+      .iconLine{stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;fill:none}
+      .iconFill{fill:currentColor}.muted{stroke:#94A3B8}.line{stroke:#334155;stroke-width:2.6;marker-end:url(#arrow);fill:none}.dashLine{stroke:#94A3B8;stroke-width:2.4;stroke-dasharray:7 7;marker-end:url(#arrow);fill:none}.chip{fill:#FFFFFF;stroke:#E2E8F0;stroke-width:1}
     </style>
+
+    <!-- Simple reusable icons. Brand-like logos are simplified vector marks, not external assets. -->
+    <symbol id="i-browser" viewBox="0 0 48 48"><rect x="8" y="10" width="32" height="28" rx="5" class="iconLine"/><path d="M8 18h32" class="iconLine"/><circle cx="15" cy="14" r="1.5" class="iconFill"/><circle cx="21" cy="14" r="1.5" class="iconFill"/><path d="M16 27h16M16 32h10" class="iconLine"/></symbol>
+    <symbol id="i-cloudflare" viewBox="0 0 48 48"><path d="M16 32h20a8 8 0 0 0-1.5-15.9A12 12 0 0 0 12.2 21.8A6 6 0 0 0 16 32Z" class="iconLine"/><path d="M26 23h13" class="iconLine"/></symbol>
+    <symbol id="i-react" viewBox="0 0 48 48"><circle cx="24" cy="24" r="3.5" class="iconFill"/><ellipse cx="24" cy="24" rx="17" ry="6.5" class="iconLine"/><ellipse cx="24" cy="24" rx="17" ry="6.5" transform="rotate(60 24 24)" class="iconLine"/><ellipse cx="24" cy="24" rx="17" ry="6.5" transform="rotate(120 24 24)" class="iconLine"/></symbol>
+    <symbol id="i-gateway" viewBox="0 0 48 48"><path d="M24 7l14 5v11c0 9-5.8 15-14 18-8.2-3-14-9-14-18V12l14-5Z" class="iconLine"/><path d="M17 24h14M26 19l5 5-5 5" class="iconLine"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 48 48"><rect x="12" y="21" width="24" height="18" rx="4" class="iconLine"/><path d="M17 21v-5a7 7 0 0 1 14 0v5" class="iconLine"/><path d="M24 28v5" class="iconLine"/></symbol>
+    <symbol id="i-box" viewBox="0 0 48 48"><path d="M10 17l14-8 14 8-14 8-14-8Z" class="iconLine"/><path d="M10 17v15l14 8 14-8V17M24 25v15" class="iconLine"/></symbol>
+    <symbol id="i-cart" viewBox="0 0 48 48"><path d="M9 12h5l4 19h17l4-13H17" class="iconLine"/><circle cx="21" cy="38" r="2.5" class="iconFill"/><circle cx="34" cy="38" r="2.5" class="iconFill"/></symbol>
+    <symbol id="i-receipt" viewBox="0 0 48 48"><path d="M14 8h20v32l-5-3-5 3-5-3-5 3V8Z" class="iconLine"/><path d="M19 17h10M19 24h10M19 31h7" class="iconLine"/></symbol>
+    <symbol id="i-card" viewBox="0 0 48 48"><rect x="9" y="14" width="30" height="22" rx="5" class="iconLine"/><path d="M9 22h30M15 30h8" class="iconLine"/></symbol>
+    <symbol id="i-star" viewBox="0 0 48 48"><path d="M24 8l4.6 9.4 10.4 1.5-7.5 7.3 1.8 10.3L24 31.6l-9.3 4.9 1.8-10.3L9 18.9l10.4-1.5L24 8Z" class="iconLine"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 48 48"><path d="M10 16h27a4 4 0 0 1 4 4v16H14a4 4 0 0 1-4-4V16Zm0 0a5 5 0 0 1 5-5h19" class="iconLine"/><path d="M33 26h8v8h-8a4 4 0 0 1 0-8Z" class="iconLine"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 48 48"><path d="M10 38h28" class="iconLine"/><rect x="14" y="24" width="5" height="10" rx="1" class="iconLine"/><rect x="23" y="16" width="5" height="18" rx="1" class="iconLine"/><rect x="32" y="10" width="5" height="24" rx="1" class="iconLine"/></symbol>
+    <symbol id="i-vector" viewBox="0 0 48 48"><circle cx="15" cy="16" r="5" class="iconLine"/><circle cx="33" cy="16" r="5" class="iconLine"/><circle cx="24" cy="33" r="5" class="iconLine"/><path d="M20 18h8M17 21l5 8M31 21l-5 8" class="iconLine"/></symbol>
+    <symbol id="i-database" viewBox="0 0 48 48"><ellipse cx="24" cy="13" rx="14" ry="6" class="iconLine"/><path d="M10 13v22c0 3.3 6.3 6 14 6s14-2.7 14-6V13M10 24c0 3.3 6.3 6 14 6s14-2.7 14-6" class="iconLine"/></symbol>
+    <symbol id="i-cdc" viewBox="0 0 48 48"><path d="M13 24a11 11 0 0 1 18-8" class="iconLine"/><path d="M31 10v7h-7" class="iconLine"/><path d="M35 24a11 11 0 0 1-18 8" class="iconLine"/><path d="M17 38v-7h7" class="iconLine"/></symbol>
+    <symbol id="i-stream" viewBox="0 0 48 48"><path d="M10 15h12c7 0 7 18 16 18" class="iconLine"/><path d="M10 24h15c6 0 6-9 13-9" class="iconLine"/><path d="M10 33h12c7 0 7-18 16-18" class="iconLine"/></symbol>
+    <symbol id="i-bucket" viewBox="0 0 48 48"><path d="M13 14h22l-3 27H16l-3-27Z" class="iconLine"/><path d="M16 14c0-4 4-7 8-7s8 3 8 7" class="iconLine"/><path d="M18 25h12" class="iconLine"/></symbol>
+    <symbol id="i-lakehouse" viewBox="0 0 48 48"><path d="M24 7l10 6-10 6-10-6 10-6Z" class="iconLine"/><path d="M14 22l10 6 10-6M14 31l10 6 10-6" class="iconLine"/></symbol>
   </defs>
 
-  <rect width="1600" height="940" rx="28" fill="url(#bg)"/>
+  <rect width="1600" height="820" rx="28" fill="url(#bg)"/>
 
-  <!-- Header -->
-  <text x="70" y="70" class="pageTitle">Commerce Analyst Agent - System Architecture</text>
-  <text x="70" y="102" class="pageSub">Microservices storefront with event-driven data pipeline, analytics agent, and recommendation services.</text>
+  <text x="64" y="62" class="pageTitle">Commerce Analyst Agent - System Architecture</text>
 
-  <!-- FRONTEND PANEL -->
-  <rect x="54" y="140" width="1492" height="180" rx="26" class="panel blueStroke"/>
-  <rect x="54" y="140" width="12" height="180" rx="6" class="blueBar"/>
 
-  <text x="92" y="190" class="sectionTitle">FRONTEND</text>
-  <text x="92" y="220" class="sectionSub">React + Vite admin and storefront experience</text>
+  <!-- FRONTEND -->
+  <rect x="54" y="118" width="1492" height="132" rx="24" class="panel blueStroke"/>
+  <rect x="54" y="118" width="12" height="132" rx="6" class="blueBar"/>
+  <text x="88" y="159" class="sectionTitle">FRONTEND</text>
+  <text x="88" y="185" class="groupLabel">CLIENT REQUEST FLOW</text>
 
-  <rect x="92" y="246" width="240" height="46" rx="23" fill="#DBEAFE" stroke="#93C5FD" stroke-width="1.5"/>
-  <circle cx="122" cy="269" r="13" fill="#2563EB"/>
-  <text x="150" y="274" class="groupLabel">WEB APP</text>
-
-  <g filter="url(#softShadow)">
-    <rect x="520" y="205" width="180" height="86" rx="20" class="card"/>
-    <circle cx="560" cy="248" r="24" class="blueIcon"/>
-    <text x="560" y="248" class="iconText">U</text>
-    <text x="596" y="242" class="cardTitle">Users</text>
-    <text x="596" y="265" class="cardBody">Admins / buyers</text>
+  <g>
+    <rect x="320" y="151" width="230" height="70" rx="18" class="card"/>
+    <circle cx="357" cy="186" r="23" class="iconBg"/><use href="#i-browser" x="337" y="166" width="40" height="40" class="blueIcon"/>
+    <text x="392" y="181" class="cardTitle">Web Browser</text><text x="392" y="202" class="cardBody">User interface</text>
   </g>
-
-  <g filter="url(#softShadow)">
-    <rect x="820" y="205" width="300" height="86" rx="20" class="card"/>
-    <circle cx="865" cy="248" r="24" class="blueIcon"/>
-    <text x="865" y="248" class="iconText">GW</text>
-    <text x="905" y="242" class="cardTitle">Gateway</text>
-    <text x="905" y="265" class="cardBody">Cloudflare Tunnel / routing</text>
+  <g>
+    <rect x="600" y="151" width="250" height="70" rx="18" class="card"/>
+    <circle cx="637" cy="186" r="23" class="iconBg"/><use href="#i-cloudflare" x="617" y="166" width="40" height="40" class="blueIcon"/>
+    <text x="672" y="181" class="cardTitle">Cloudflare Tunnel</text><text x="672" y="202" class="cardBody">Public ingress</text>
   </g>
-
-  <g filter="url(#softShadow)">
-    <rect x="1240" y="205" width="220" height="86" rx="20" class="card"/>
-    <circle cx="1285" cy="248" r="24" class="blueIcon"/>
-    <text x="1285" y="248" class="iconText">API</text>
-    <text x="1325" y="242" class="cardTitle">API Traffic</text>
-    <text x="1325" y="265" class="cardBody">To backend services</text>
+  <g>
+    <rect x="900" y="151" width="220" height="70" rx="18" class="card"/>
+    <circle cx="937" cy="186" r="23" class="iconBg"/><use href="#i-react" x="917" y="166" width="40" height="40" class="blueIcon"/>
+    <text x="972" y="181" class="cardTitle">ReactJS</text><text x="972" y="202" class="cardBody">SPA storefront</text>
   </g>
-
-  <line x1="700" y1="248" x2="820" y2="248" class="line"/>
-  <line x1="1120" y1="248" x2="1240" y2="248" class="line"/>
-  <text x="730" y="232" class="arrowLabel">REQUESTS</text>
-  <text x="1150" y="232" class="arrowLabel">ROUTING</text>
-
-  <!-- APPLICATION PANEL -->
-  <rect x="54" y="350" width="1492" height="300" rx="26" class="panel purpleStroke"/>
-  <rect x="54" y="350" width="12" height="300" rx="6" class="purpleBar"/>
-
-  <text x="92" y="400" class="sectionTitle">APPLICATION SERVICES</text>
-  <text x="92" y="430" class="sectionSub">FastAPI microservices, analytics, and recommendation workloads</text>
-
-  <rect x="92" y="458" width="280" height="40" rx="20" fill="#EDE9FE" stroke="#C4B5FD" stroke-width="1.5"/>
-  <text x="122" y="483" class="groupLabel">CORE COMMERCE SERVICES</text>
-
-  <!-- Core service cards: aligned 7 columns -->
-  <g filter="url(#softShadow)">
-    <rect x="92" y="520" width="130" height="95" rx="18" class="card"/>
-    <circle cx="157" cy="552" r="20" class="blueIcon"/>
-    <text x="157" y="552" class="iconText">A</text>
-    <text x="157" y="592" text-anchor="middle" class="cardTitle">Auth</text>
+  <g>
+    <rect x="1170" y="151" width="220" height="70" rx="18" class="card"/>
+    <circle cx="1207" cy="186" r="23" class="iconBg"/><use href="#i-gateway" x="1187" y="166" width="40" height="40" class="blueIcon"/>
+    <text x="1242" y="181" class="cardTitle">API Gateway</text><text x="1242" y="202" class="cardBody">Route &amp; auth edge</text>
   </g>
+  <path d="M550 186H600" class="line"/><path d="M850 186H900" class="line"/><path d="M1120 186H1170" class="line"/>
 
-  <g filter="url(#softShadow)">
-    <rect x="240" y="520" width="130" height="95" rx="18" class="card"/>
-    <circle cx="305" cy="552" r="20" class="blueIcon"/>
-    <text x="305" y="552" class="iconText">P</text>
-    <text x="305" y="592" text-anchor="middle" class="cardTitle">Products</text>
+  <!-- APPLICATION -->
+  <rect x="54" y="282" width="1492" height="240" rx="24" class="panel purpleStroke"/>
+  <rect x="54" y="282" width="12" height="240" rx="6" class="purpleBar"/>
+  <text x="88" y="322" class="sectionTitle">APPLICATION SERVICES</text>
+
+  <rect x="88" y="348" width="270" height="34" rx="17" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.2"/>
+  <text x="112" y="370" class="groupLabel">CORE COMMERCE SERVICES</text>
+
+  <rect x="1168" y="348" width="306" height="34" rx="17" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.2"/>
+  <text x="1192" y="370" class="groupLabel">INTELLIGENCE &amp; ANALYTICS</text>
+
+  <!-- service cards row -->
+  <g><rect x="88" y="402" width="130" height="86" rx="17" class="card"/><circle cx="153" cy="431" r="21" class="iconBg"/><use href="#i-lock" x="135" y="413" width="36" height="36" class="blueIcon"/><text x="153" y="469" text-anchor="middle" class="cardTitle">Auth</text></g>
+  <g><rect x="236" y="402" width="130" height="86" rx="17" class="card"/><circle cx="301" cy="431" r="21" class="iconBg"/><use href="#i-box" x="283" y="413" width="36" height="36" class="blueIcon"/><text x="301" y="469" text-anchor="middle" class="cardTitle">Products</text></g>
+  <g><rect x="384" y="402" width="130" height="86" rx="17" class="card"/><circle cx="449" cy="431" r="21" class="iconBg"/><use href="#i-cart" x="431" y="413" width="36" height="36" class="blueIcon"/><text x="449" y="469" text-anchor="middle" class="cardTitle">Cart</text></g>
+  <g><rect x="532" y="402" width="130" height="86" rx="17" class="card"/><circle cx="597" cy="431" r="21" class="iconBg"/><use href="#i-receipt" x="579" y="413" width="36" height="36" class="blueIcon"/><text x="597" y="469" text-anchor="middle" class="cardTitle">Orders</text></g>
+  <g><rect x="680" y="402" width="130" height="86" rx="17" class="card"/><circle cx="745" cy="431" r="21" class="iconBg"/><use href="#i-card" x="727" y="413" width="36" height="36" class="blueIcon"/><text x="745" y="469" text-anchor="middle" class="cardTitle">Payment</text></g>
+  <g><rect x="828" y="402" width="130" height="86" rx="17" class="card"/><circle cx="893" cy="431" r="21" class="iconBg"/><use href="#i-star" x="875" y="413" width="36" height="36" class="blueIcon"/><text x="893" y="469" text-anchor="middle" class="cardTitle">Reviews</text></g>
+  <g><rect x="976" y="402" width="130" height="86" rx="17" class="card"/><circle cx="1041" cy="431" r="21" class="iconBg"/><use href="#i-wallet" x="1023" y="413" width="36" height="36" class="blueIcon"/><text x="1041" y="469" text-anchor="middle" class="cardTitle">Payout</text></g>
+
+  <!-- analytics cards -->
+  <g><rect x="1168" y="402" width="145" height="86" rx="17" class="card"/><circle cx="1240" cy="431" r="21" class="iconBg"/><use href="#i-chart" x="1222" y="413" width="36" height="36" class="purpleIcon"/><text x="1240" y="463" text-anchor="middle" class="cardTitle">Analytics</text><text x="1240" y="481" text-anchor="middle" class="cardBody">SQL + charts</text></g>
+  <g><rect x="1330" y="402" width="145" height="86" rx="17" class="card"/><circle cx="1402" cy="431" r="21" class="iconBg"/><use href="#i-vector" x="1384" y="413" width="36" height="36" class="purpleIcon"/><text x="1402" y="463" text-anchor="middle" class="cardTitle">Recommend</text><text x="1402" y="481" text-anchor="middle" class="cardBody">Qdrant</text></g>
+
+  <!-- external payment placed beside service, not floating in large whitespace -->
+  <g>
+    <rect x="680" y="348" width="280" height="38" rx="19" class="cardHot"/>
+    <text x="706" y="370" class="cardTitle" fill="#B45309">VNPay</text>
+    <text x="773" y="370" class="cardBody">External payment provider</text>
   </g>
+  <path d="M745 400V385" class="dashLine"/>
 
-  <g filter="url(#softShadow)">
-    <rect x="388" y="520" width="130" height="95" rx="18" class="card"/>
-    <circle cx="453" cy="552" r="20" class="blueIcon"/>
-    <text x="453" y="552" class="iconText">C</text>
-    <text x="453" y="592" text-anchor="middle" class="cardTitle">Cart</text>
-  </g>
+  <!-- gateway to services -->
+  <path d="M1280 221V282" class="line"/>
+  <rect x="1292" y="246" width="124" height="22" rx="11" class="chip"/><text x="1306" y="261" class="chipText">API REQUESTS</text>
 
-  <g filter="url(#softShadow)">
-    <rect x="536" y="520" width="130" height="95" rx="18" class="card"/>
-    <circle cx="601" cy="552" r="20" class="blueIcon"/>
-    <text x="601" y="552" class="iconText">O</text>
-    <text x="601" y="592" text-anchor="middle" class="cardTitle">Orders</text>
-  </g>
+  <!-- DATA -->
+  <rect x="54" y="570" width="1492" height="174" rx="24" class="panel greenStroke"/>
+  <rect x="54" y="570" width="12" height="174" rx="6" class="greenBar"/>
+  <text x="88" y="600" class="sectionTitle">DATA &amp; EVENT PLATFORM</text>
 
-  <g filter="url(#softShadow)">
-    <rect x="684" y="520" width="130" height="95" rx="18" class="card"/>
-    <circle cx="749" cy="552" r="20" class="blueIcon"/>
-    <text x="749" y="552" class="iconText">$</text>
-    <text x="749" y="592" text-anchor="middle" class="cardTitle">Payment</text>
-  </g>
+  <g><rect x="115" y="660" width="225" height="72" rx="18" class="card"/><circle cx="153" cy="696" r="22" class="iconBg"/><use href="#i-database" x="134" y="677" width="38" height="38" class="greenIcon"/><text x="190" y="691" class="cardTitle">PostgreSQL</text><text x="190" y="712" class="cardBody">Transactional store</text></g>
+  <g><rect x="395" y="660" width="225" height="72" rx="18" class="card"/><circle cx="433" cy="696" r="22" class="iconBg"/><use href="#i-cdc" x="414" y="677" width="38" height="38" class="greenIcon"/><text x="470" y="691" class="cardTitle">Debezium</text><text x="470" y="712" class="cardBody">Change capture</text></g>
+  <g><rect x="675" y="660" width="225" height="72" rx="18" class="card"/><circle cx="713" cy="696" r="22" class="iconBg"/><use href="#i-stream" x="694" y="677" width="38" height="38" class="greenIcon"/><text x="750" y="691" class="cardTitle">Kafka</text><text x="750" y="712" class="cardBody">Event streaming</text></g>
+  <g><rect x="955" y="660" width="225" height="72" rx="18" class="card"/><circle cx="993" cy="696" r="22" class="iconBg"/><use href="#i-bucket" x="974" y="677" width="38" height="38" class="greenIcon"/><text x="1030" y="691" class="cardTitle">Amazon S3</text><text x="1030" y="712" class="cardBody">Object storage</text></g>
+  <g><rect x="1235" y="660" width="245" height="72" rx="18" fill="#ECFDF5" stroke="#22C55E" stroke-width="1.8" filter="url(#softShadow)"/><circle cx="1273" cy="696" r="22" class="iconBg"/><use href="#i-lakehouse" x="1254" y="677" width="38" height="38" class="greenIcon"/><text x="1310" y="691" class="cardTitle">Databricks</text><text x="1310" y="712" class="cardBody">Lakehouse serving</text></g>
 
-  <g filter="url(#softShadow)">
-    <rect x="832" y="520" width="130" height="95" rx="18" class="card"/>
-    <circle cx="897" cy="552" r="20" class="blueIcon"/>
-    <text x="897" y="552" class="iconText">R</text>
-    <text x="897" y="592" text-anchor="middle" class="cardTitle">Reviews</text>
-  </g>
+  <path d="M340 696H395" class="line"/><path d="M620 696H675" class="line"/><path d="M900 696H955" class="line"/><path d="M1180 696H1235" class="line"/>
 
-  <g filter="url(#softShadow)">
-    <rect x="980" y="520" width="130" height="95" rx="18" class="card"/>
-    <circle cx="1045" cy="552" r="20" class="blueIcon"/>
-    <text x="1045" y="552" class="iconText">P</text>
-    <text x="1045" y="592" text-anchor="middle" class="cardTitle">Payout</text>
-  </g>
+  <!-- App to data flows, shortened and routed in available gutter -->
+  <path d="M600 520V620H228V660" class="line"/>
+  <text x="612" y="626" class="chipText">OLTP WRITES</text>
 
-  <rect x="1160" y="458" width="300" height="40" rx="20" fill="#EDE9FE" stroke="#C4B5FD" stroke-width="1.5"/>
-  <text x="1190" y="483" class="groupLabel">INTELLIGENCE AND ANALYTICS</text>
+  <path d="M1240 488V578H1328V660" class="line"/>
+  <text x="1122" y="556" class="chipText">SQL ANALYTICS</text>
 
-  <g filter="url(#softShadow)">
-    <rect x="1160" y="520" width="140" height="95" rx="18" class="card"/>
-    <circle cx="1230" cy="552" r="20" class="purpleIcon"/>
-    <text x="1230" y="552" class="iconText">AI</text>
-    <text x="1230" y="586" text-anchor="middle" class="cardTitle">Analytics</text>
-    <text x="1230" y="606" text-anchor="middle" class="cardBody">SQL + charts</text>
-  </g>
-
-  <g filter="url(#softShadow)">
-    <rect x="1320" y="520" width="140" height="95" rx="18" class="card"/>
-    <circle cx="1390" cy="552" r="20" class="purpleIcon"/>
-    <text x="1390" y="552" class="iconText">ML</text>
-    <text x="1390" y="586" text-anchor="middle" class="cardTitle">Recommend</text>
-    <text x="1390" y="606" text-anchor="middle" class="cardBody">Qdrant</text>
-  </g>
-
-  <!-- VNPay aligned above payment -->
-  <g filter="url(#softShadow)">
-    <rect x="684" y="388" width="230" height="70" rx="18" fill="#FEF3C7" stroke="#F59E0B" stroke-width="2"/>
-    <circle cx="724" cy="423" r="20" fill="#FDE68A"/>
-    <text x="724" y="423" class="iconText">VN</text>
-    <text x="762" y="418" class="cardTitle">VNPay</text>
-    <text x="762" y="440" class="cardBody">External payment</text>
-  </g>
-
-  <path d="M749 520V458" class="dashLine"/>
-  <text x="770" y="494" class="arrowLabel">PAYMENT FLOW</text>
-
-  <!-- API line down -->
-  <path d="M1350 291V520" class="line"/>
-  <text x="1363" y="410" class="arrowLabel">API TRAFFIC</text>
-
-  <!-- DATA PANEL -->
-  <rect x="54" y="684" width="1492" height="214" rx="26" class="panel greenStroke"/>
-  <rect x="54" y="684" width="12" height="214" rx="6" class="greenBar"/>
-
-  <text x="92" y="734" class="sectionTitle">DATA AND EVENT PLATFORM</text>
-  <text x="92" y="764" class="sectionSub">Operational database, CDC, streaming backbone, object storage, and analytics lakehouse.</text>
-
-  <!-- Data cards: aligned 5 columns -->
-  <g filter="url(#softShadow)">
-    <rect x="220" y="790" width="210" height="82" rx="20" class="card"/>
-    <circle cx="265" cy="831" r="22" class="greenIcon"/>
-    <text x="265" y="831" class="iconText">DB</text>
-    <text x="305" y="823" class="cardTitle">PostgreSQL</text>
-    <text x="305" y="846" class="cardBody">Transactional store</text>
-  </g>
-
-  <g filter="url(#softShadow)">
-    <rect x="480" y="790" width="210" height="82" rx="20" class="card"/>
-    <circle cx="525" cy="831" r="22" class="greenIcon"/>
-    <text x="525" y="831" class="iconText">CDC</text>
-    <text x="565" y="823" class="cardTitle">Debezium</text>
-    <text x="565" y="846" class="cardBody">Change capture</text>
-  </g>
-
-  <g filter="url(#softShadow)">
-    <rect x="740" y="790" width="210" height="82" rx="20" class="card"/>
-    <circle cx="785" cy="831" r="22" class="greenIcon"/>
-    <text x="785" y="831" class="iconText">EV</text>
-    <text x="825" y="823" class="cardTitle">Kafka</text>
-    <text x="825" y="846" class="cardBody">Event streaming</text>
-  </g>
-
-  <g filter="url(#softShadow)">
-    <rect x="1000" y="790" width="210" height="82" rx="20" class="card"/>
-    <circle cx="1045" cy="831" r="22" class="greenIcon"/>
-    <text x="1045" y="831" class="iconText">S3</text>
-    <text x="1085" y="823" class="cardTitle">Amazon S3</text>
-    <text x="1085" y="846" class="cardBody">Object storage</text>
-  </g>
-
-  <g filter="url(#softShadow)">
-    <rect x="1260" y="790" width="230" height="82" rx="20" fill="#ECFDF5" stroke="#22C55E" stroke-width="2"/>
-    <circle cx="1305" cy="831" r="22" fill="#22C55E"/>
-    <text x="1305" y="831" class="iconText" fill="#FFFFFF">DL</text>
-    <text x="1345" y="823" class="cardTitle">Databricks</text>
-    <text x="1345" y="846" class="cardBody">Lakehouse serving</text>
-  </g>
-
-  <line x1="430" y1="831" x2="480" y2="831" class="line"/>
-  <line x1="690" y1="831" x2="740" y2="831" class="line"/>
-  <line x1="950" y1="831" x2="1000" y2="831" class="line"/>
-  <line x1="1210" y1="831" x2="1260" y2="831" class="line"/>
-
-  <text x="442" y="815" class="arrowLabel">CDC</text>
-  <text x="700" y="815" class="arrowLabel">EVENTS</text>
-  <text x="960" y="815" class="arrowLabel">BRONZE</text>
-  <text x="1220" y="815" class="arrowLabel">SERVING</text>
-
-  <!-- App to data flows -->
-  <path d="M601 615V706H325V790" class="line"/>
-  <text x="365" y="704" class="arrowLabel">OLTP WRITES</text>
-
-  <path d="M1230 615V706H1375V790" class="line"/>
-  <text x="1248" y="704" class="arrowLabel">SQL ANALYTICS</text>
-
-  <path d="M1390 615V706H1445V790" class="line"/>
-  <text x="1398" y="704" class="arrowLabel">FEATURE ACCESS</text>
+  <path d="M1402 488V578H1358V660" class="line"/>
+  <text x="1520" y="556" text-anchor="end" class="chipText">FEATURE ACCESS</text>
 </svg>
